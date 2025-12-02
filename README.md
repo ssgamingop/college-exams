@@ -1,16 +1,77 @@
-# React + Vite
+# Exam Scheduler 📅
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A premium, modern web application for students to view their Theory and Practical exam schedules. Built with React, Vite, and Tailwind CSS.
 
-Currently, two official plugins are available:
+**Created by [Somyajeet Singh](https://github.com/ssgamingop)**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ Features
 
-## React Compiler
+*   **🔍 Smart Search**: Instantly find schedules by Student Name or Roll Number.
+*   **🎨 Premium UI**: Dark mode aesthetic with neon accents, glassmorphism, and smooth animations.
+*   **📱 Fully Responsive**: Optimized for both desktop and mobile devices.
+*   **⚡ Fast Performance**: Powered by Vite for lightning-fast load times.
+*   **📊 Comprehensive Data**: Displays both Theory and Practical exam details side-by-side.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🚀 Getting Started
 
-## Expanding the ESLint configuration
+### Prerequisites
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+*   Node.js (v16 or higher)
+*   npm (v7 or higher)
+
+### Installation
+
+1.  **Clone the repository**:
+    ```bash
+    git clone git@github.com:ssgamingop/college-exams.git
+    cd exam-scheduler
+    ```
+
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
+
+3.  **Run the development server**:
+    ```bash
+    npm run dev
+    ```
+    Open your browser and navigate to the URL shown (usually `http://localhost:5173`).
+
+## 🛠️ Data Processing
+
+The application uses a static JSON file (`src/data/exam_data.json`) generated from CSV files.
+
+**To update the data:**
+
+1.  Place your new CSV files in the `csv_data/` directory.
+2.  Run the processing script:
+    ```bash
+    node scripts/process_data.cjs
+    ```
+3.  The app will automatically reflect the changes.
+
+## 📦 Deployment
+
+### Deploy to Vercel
+
+1.  Push your latest changes to GitHub:
+    ```bash
+    git add .
+    git commit -m "Update app"
+    git push origin main
+    ```
+2.  Go to [Vercel](https://vercel.com) and import your repository.
+3.  Vercel will automatically detect the settings (Framework: Vite).
+4.  Click **Deploy**.
+
+## 💻 Tech Stack
+
+*   **Frontend**: React, Vite
+*   **Styling**: Tailwind CSS, PostCSS
+*   **Animations**: Framer Motion
+*   **Icons**: Lucide React
+
+---
+
+*Thanks me Later* 😉
