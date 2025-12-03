@@ -14,7 +14,7 @@ function App() {
       <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex justify-between items-center bg-slate-950/50 backdrop-blur-md border-b border-white/5"
+        className="fixed top-0 left-0 right-0 z-50 px-4 md:px-6 py-4 flex justify-between items-center bg-slate-950/50 backdrop-blur-md border-b border-white/5"
       >
         <div className="text-sm font-medium text-slate-400">
           Created by <span className="text-cyan-400 font-bold">Somyajeet Singh</span>
@@ -39,7 +39,7 @@ function App() {
             y: [0, 30, 0]
           }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-900/20 rounded-full blur-[128px]"
+          className="absolute top-0 left-1/4 w-64 h-64 md:w-96 md:h-96 bg-cyan-900/20 rounded-full blur-[128px]"
         />
         <motion.div
           animate={{
@@ -49,7 +49,7 @@ function App() {
             y: [0, -50, 0]
           }}
           transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-900/20 rounded-full blur-[128px]"
+          className="absolute bottom-0 right-1/4 w-64 h-64 md:w-96 md:h-96 bg-purple-900/20 rounded-full blur-[128px]"
         />
       </div>
 

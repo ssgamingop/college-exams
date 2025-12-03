@@ -36,7 +36,7 @@ const Search = ({ students, onSelectStudent }) => {
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setTimeout(() => setIsFocused(false), 200)}
                     placeholder="Search by Name or Roll No..."
-                    className="w-full bg-transparent text-white px-4 py-4 outline-none placeholder-slate-500"
+                    className="w-full bg-transparent text-white text-base px-4 py-4 outline-none placeholder-slate-500"
                 />
             </div>
 
@@ -46,7 +46,7 @@ const Search = ({ students, onSelectStudent }) => {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden"
+                        className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto"
                     >
                         {suggestions.map((student) => (
                             <div

@@ -32,12 +32,12 @@ const ScheduleCard = ({ student }) => {
             className="w-full space-y-8"
         >
             {/* Student Header */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 text-center border border-white/10 shadow-2xl">
+            <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-5 md:p-8 text-center border border-white/10 shadow-2xl">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500" />
-                <h2 className="text-4xl md:text-5xl font-bold text-white mb-3 tracking-tight">
+                <h2 className="text-3xl md:text-5xl font-bold text-white mb-3 tracking-tight">
                     {student.name}
                 </h2>
-                <p className="text-cyan-400 font-mono text-xl tracking-wider">{student.rollNo}</p>
+                <p className="text-cyan-400 font-mono text-lg md:text-xl tracking-wider">{student.rollNo}</p>
             </div>
 
             <div className="grid lg:grid-cols-2 gap-8">
