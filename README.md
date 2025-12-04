@@ -4,6 +4,8 @@ A premium, modern web application for students to view their Theory and Practica
 
 **Created by [Somyajeet Singh](https://github.com/ssgamingop)**
 
+**Deployed on Vercel [Exam-Scheduler](https://college-exams.vercel.app/)**
+
 ## ✨ Features
 
 *   **🔍 Smart Search**: Instantly find schedules by Student Name or Roll Number.
