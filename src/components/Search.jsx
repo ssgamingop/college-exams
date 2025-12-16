@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search as SearchIcon } from 'lucide-react';
+import { Search as SearchIcon, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Search = ({ students, onSelectStudent }) => {
@@ -38,6 +38,18 @@ const Search = ({ students, onSelectStudent }) => {
                     placeholder="Search by Name or Roll No..."
                     className="w-full bg-transparent text-white text-base px-4 py-4 outline-none placeholder-slate-500"
                 />
+                {query && (
+                    <button
+                        onClick={() => {
+                            setQuery('');
+                            setSuggestions([]);
+                            onSelectStudent(null);
+                        }}
+                        className="p-2 text-slate-400 hover:text-white transition-colors mr-2"
+                    >
+                        <X size={20} />
+                    </button>
+                )}
             </div>
 
             <AnimatePresence>
@@ -61,7 +73,7 @@ const Search = ({ students, onSelectStudent }) => {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     );
 };
 
