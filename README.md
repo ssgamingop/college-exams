@@ -8,11 +8,13 @@ A premium, modern web application for students to view their Theory and Practica
 
 ## ✨ Features
 
-*   **🔍 Smart Search**: Instantly find schedules by Student Name or Roll Number.
-*   **🎨 Premium UI**: Dark mode aesthetic with neon accents, glassmorphism, and smooth animations.
-*   **📱 Fully Responsive**: Optimized for both desktop and mobile devices.
-*   **⚡ Fast Performance**: Powered by Vite for lightning-fast load times.
-*   **📊 Comprehensive Data**: Displays both Theory and Practical exam details side-by-side.
+*   **🔍 Smart Search**: Instantly find schedules by Student Name or Roll Number with a new "Clear" option.
+*   **📅 Calendar Sync**: Download your schedule as an `.ics` file and add it to Google/Apple Calendar in one click.
+*   **📍 Detailed Info**: View Exam Locations (Classroom/Bunker) and Panel Numbers for practicals.
+*   **🎨 Cyberpunk UI**: A fully redesigned dark mode interface with neon accents, glassmorphism, and distinct themes for Theory (Purple) vs Practical (Cyan).
+*   **⚡ Zero Lag**: Optimized performance with smart component rendering for instant feedback.
+*   **📱 Fully Responsive**: Looks amazing on phones, tablets, and desktops.
+*   **🛡️ Error Handling**: Gracefully handles missing data with "NA" fallbacks so the UI never breaks.
 
 ## 🚀 Getting Started
 
