@@ -1,4 +1,4 @@
-const CACHE_NAME = 'exam-scheduler-v1';
+const CACHE_NAME = 'exam-scheduler-v2';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -15,15 +15,24 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        caches.match(event.request)
-            .then((response) => {
-                if (response) {
-                    return response;
-                }
-                return fetch(event.request);
-            })
-    );
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .catch(() => {
+                    return caches.match(event.request);
+                })
+        );
+    } else {
+        event.respondWith(
+            caches.match(event.request)
+                .then((response) => {
+                    if (response) {
+                        return response;
+                    }
+                    return fetch(event.request);
+                })
+        );
+    }
 });
 
 self.addEventListener('activate', (event) => {
