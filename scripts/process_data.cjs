@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // File paths
+// File paths
 const MAPPING_CSV = path.join(__dirname, '../csv_data/Batch25-29__Sem1-Sprint1 - Data.csv');
 const THEORY_CSV = path.join(__dirname, '../csv_data/Scheduling Plan - Students  - 25 - 29 (Theory) - Sprint 2.csv');
 const PRACTICAL_CSV = path.join(__dirname, '../csv_data/Scheduling Plan - Students  - Batch25-29 (Sprint 2).csv');
@@ -36,17 +37,12 @@ function readFile(filePath) {
 function processData() {
     console.log('Processing data...');
 
-    // 1. Process Mapping (Roll No <-> Name)
+    // 2. Process Mapping (Roll No <-> Name)
     const mappingLines = readFile(MAPPING_CSV);
     const students = {}; // RollNo -> { name, rollNo, theory: [], practical: [] }
 
     // Skip header (line 0)
     for (let i = 1; i < mappingLines.length; i++) {
-        const parts = mappingLines[i].split(',');
-        // Format: Student Roll Number,Count,Student Name
-        // Note: Simple split might fail if names have commas, but looking at file it seems okay or quoted.
-        // Let's use a slightly more robust split if needed, but for now simple split.
-        // Actually, let's use the regex approach for safety.
         const cols = parseLine(mappingLines[i]);
         if (cols.length >= 3) {
             const rollNo = cols[0];
@@ -79,6 +75,7 @@ function processData() {
         const subject = cols[1];
         const timeSlot = cols[3];
         const rollRange = cols[4]; // "150096725002 to 150096725027"
+        const location = cols[6]; // Class Details
 
         if (!rollRange || !rollRange.includes(' to ')) continue;
 
@@ -92,6 +89,7 @@ function processData() {
                     date: currentTheoryDate,
                     subject,
                     time: timeSlot,
+                    location: location,
                     type: 'Theory'
                 });
             }
@@ -102,66 +100,88 @@ function processData() {
     // 3. Process Practical Schedule (Name based)
     const practicalLines = readFile(PRACTICAL_CSV);
     let currentPracticalDate = '';
-    // Structure is complex. 
-    // Row 1: Day 5 : 16th Dec : Tue
-    // Row 2: Slot No., Time, Panel 1..., Panel 2...
-    // Row 3+: Data
 
-    // We need to track the current date as we iterate.
-    // And map columns to subjects.
-
-    let practicalHeaders = [];
+    let subjectMap = {}; // colIndex -> { subject, panel }
+    let venueMap = {}; // colIndex -> Venue Name
 
     for (let i = 0; i < practicalLines.length; i++) {
         const line = practicalLines[i];
-        const cols = parseLine(line);
+        const row = parseLine(line);
+        if (!row || row.length === 0) continue;
 
-        // Check for Date row
-        if (line.includes('Day') && line.includes(':')) {
-            // "Day 5 : 16th Dec : Tue" -> extract date
-            currentPracticalDate = cols[0];
+        // Detect Date Row (could be in col 0 or col 1)
+        // Day 1 often in col 1, others in col 0
+        const dateCell = (row[0] && row[0].includes('Day')) ? row[0] : (row[1] && row[1].includes('Day') ? row[1] : null);
+        if (dateCell) {
+            currentPracticalDate = dateCell.trim();
+            // Reset maps for new day block
+            venueMap = {};
+            subjectMap = {};
             continue;
         }
 
-        // Check for Header row
-        if (cols[0] === 'Slot No.') {
-            practicalHeaders = cols;
+        // Detect Venue Row
+        if ((row[0] && row[0].includes('Venue')) || (row[1] && row[1].includes('Venue'))) {
+            row.forEach((cell, idx) => {
+                if (cell && cell.includes('Bunker')) {
+                    venueMap[idx] = cell.trim();
+                }
+            });
             continue;
         }
 
-        // Data row
-        if (!cols[0] || !cols[1]) continue; // Skip empty or break lines
-        if (cols[0].startsWith('Break')) continue;
+        // Detect Header Row (Subject/Panel Mapping)
+        if (row[1] === 'Time' || row[0] === 'Slot No.') {
+            row.forEach((cell, idx) => {
+                if (cell && cell.includes('Panel')) {
+                    const parts = cell.split('-');
+                    if (parts.length >= 2) {
+                        const panel = parts[0].trim(); // "Panel 1"
+                        const subject = parts.slice(1).join('-').trim(); // "Git..."
+                        subjectMap[idx] = { subject, panel };
+                    } else {
+                        // Fallback if formatting is weird
+                        subjectMap[idx] = { subject: cell.trim(), panel: 'Unknown' };
+                    }
+                }
+            });
+            continue;
+        }
 
-        const timeSlot = cols[1];
+        // Process Student Row
+        if (!currentPracticalDate) continue;
 
-        // Iterate through panel columns (index 2 onwards)
-        for (let j = 2; j < cols.length; j++) {
-            const studentName = cols[j];
-            if (!studentName || studentName === 'NA') continue;
+        const time = row[1];
+        if (!time || !time.includes('M')) continue; // Simple AM/PM check
 
-            // Find student by name (fuzzy match or exact?)
-            // The names in practical CSV might slightly differ from Mapping CSV.
-            // Let's try exact match first, then normalized.
+        // Iterate through student columns (starting from 2)
+        for (let j = 2; j < row.length; j++) {
+            const studentName = row[j];
+            if (studentName && studentName.length > 2) {
 
-            const student = Object.values(students).find(s =>
-                s.name.toLowerCase().trim() === studentName.toLowerCase().trim()
-            );
+                // Normalize name
+                const normalizeName = (name) => name.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
 
-            if (student) {
-                // Subject is in header? 
-                // Header: "Panel 1 - Git, GitHub, and LinkedIn"
-                let subject = practicalHeaders[j];
-                if (!subject) continue; // Skip if no header for this column
-                // Clean subject name (remove Panel X - )
-                subject = subject.replace(/Panel \d+ - /, '').trim();
+                const student = Object.values(students).find(s =>
+                    normalizeName(s.name) === normalizeName(studentName)
+                );
 
-                student.practical.push({
-                    date: currentPracticalDate,
-                    subject,
-                    time: timeSlot,
-                    type: 'Practical'
-                });
+                if (student) {
+                    const headerInfo = subjectMap[j] || { subject: 'Unknown', panel: 'Unknown' };
+                    let location = venueMap[j];
+
+                    // Fallback for Day 1 where Venue might handle differently or be missing
+                    if (!location) location = 'TBD';
+
+                    student.practical.push({
+                        date: currentPracticalDate,
+                        subject: headerInfo.subject,
+                        panel: headerInfo.panel,
+                        time: time.trim(),
+                        location: location,
+                        type: 'Practical'
+                    });
+                }
             }
         }
     }

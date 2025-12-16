@@ -73,7 +73,10 @@ function App() {
         />
 
         <div className="mt-12">
-          <ScheduleCard student={selectedStudent} />
+          <ScheduleCard
+            key={selectedStudent ? selectedStudent.rollNo : 'empty'}
+            student={selectedStudent}
+          />
         </div>
 
         {!selectedStudent && (
