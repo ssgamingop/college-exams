@@ -60,7 +60,7 @@ const ExamItem = ({ exam, type }) => {
                 <div className="flex flex-wrap gap-3 text-sm font-medium text-slate-600 dark:text-slate-300">
                     <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/5 transition-colors duration-300">
                         <Calendar size={14} className={accentColor} />
-                        {exam.date || 'NA'}
+                        {exam.date ? exam.date.replace(/^Day \d+:\s*/, '') : 'NA'}
                     </div>
                     <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/5 transition-colors duration-300">
                         <Clock size={14} className={accentColor} />
