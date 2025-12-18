@@ -101,20 +101,53 @@ function processData() {
     const practicalLines = readFile(PRACTICAL_CSV);
     let currentPracticalDate = '';
 
-    let subjectMap = {}; // colIndex -> { subject, panel }
+    let subjectMap = {}; // colIndex -> { subject, panel, professor }
     let venueMap = {}; // colIndex -> Venue Name
+
+    // Helper to parse header for Panel + Subject + Professor
+    function parsePanelHeader(header) {
+        // Expected formats: "Panel 1 Prof. Vishakha - Python" or "Panel 2 - Subject"
+        let subject = '';
+        let professor = '';
+        let panel = '';
+
+        const cleanHeader = header.replace(/\s+/g, ' ');
+        const parts = cleanHeader.split(' - ');
+
+        if (parts.length > 1) {
+            subject = parts.slice(1).join(' - ').trim();
+            const prefix = parts[0];
+
+            // Extract Panel
+            const panelMatch = prefix.match(/(Panel\s*\d+|Batch\s*\d+)/i);
+            panel = panelMatch ? panelMatch[0] : 'Unknown';
+
+            // Extract Professor
+            const profMatch = prefix.match(/Prof\.?\s*(.+)/i);
+            if (profMatch) {
+                // If regex captured "Prof. Name", use it. remove "Panel 1" if stuck to it? 
+                // straightforward: just check if "Prof" exists in prefix
+                const prefixParts = prefix.split(/Prof\.?/i);
+                if (prefixParts.length > 1) {
+                    professor = 'Prof. ' + prefixParts[1].trim();
+                }
+            }
+        } else {
+            subject = header.trim();
+            panel = 'Unknown';
+        }
+        return { subject, panel, professor };
+    }
 
     for (let i = 0; i < practicalLines.length; i++) {
         const line = practicalLines[i];
         const row = parseLine(line);
         if (!row || row.length === 0) continue;
 
-        // Detect Date Row (could be in col 0 or col 1)
-        // Day 1 often in col 1, others in col 0
+        // Detect Date Row
         const dateCell = (row[0] && row[0].includes('Day')) ? row[0] : (row[1] && row[1].includes('Day') ? row[1] : null);
         if (dateCell) {
             currentPracticalDate = dateCell.trim();
-            // Reset maps for new day block
             venueMap = {};
             subjectMap = {};
             continue;
@@ -130,19 +163,11 @@ function processData() {
             continue;
         }
 
-        // Detect Header Row (Subject/Panel Mapping)
+        // Detect Header Row (Slot No.)
         if (row[1] === 'Time' || row[0] === 'Slot No.') {
             row.forEach((cell, idx) => {
-                if (cell && cell.includes('Panel')) {
-                    const parts = cell.split('-');
-                    if (parts.length >= 2) {
-                        const panel = parts[0].trim(); // "Panel 1"
-                        const subject = parts.slice(1).join('-').trim(); // "Git..."
-                        subjectMap[idx] = { subject, panel };
-                    } else {
-                        // Fallback if formatting is weird
-                        subjectMap[idx] = { subject: cell.trim(), panel: 'Unknown' };
-                    }
+                if (cell && (cell.includes('Panel') || cell.includes('Batch'))) {
+                    subjectMap[idx] = parsePanelHeader(cell);
                 }
             });
             continue;
@@ -152,12 +177,12 @@ function processData() {
         if (!currentPracticalDate) continue;
 
         const time = row[1];
-        if (!time || !time.includes('M')) continue; // Simple AM/PM check
+        if (!time || !time.includes('M')) continue;
 
-        // Iterate through student columns (starting from 2)
+        // Iterate through student columns
         for (let j = 2; j < row.length; j++) {
             const studentName = row[j];
-            if (studentName && studentName.length > 2) {
+            if (studentName && studentName.length > 2 && studentName !== 'NA') {
 
                 // Normalize name
                 const normalizeName = (name) => name.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -168,10 +193,7 @@ function processData() {
 
                 if (student) {
                     const headerInfo = subjectMap[j] || { subject: 'Unknown', panel: 'Unknown' };
-                    let location = venueMap[j];
-
-                    // Fallback for Day 1 where Venue might handle differently or be missing
-                    if (!location) location = 'TBD';
+                    let location = venueMap[j] || 'TBD';
 
                     student.practical.push({
                         date: currentPracticalDate,
@@ -179,7 +201,8 @@ function processData() {
                         panel: headerInfo.panel,
                         time: time.trim(),
                         location: location,
-                        type: 'Practical'
+                        type: 'Practical',
+                        professor: headerInfo.professor // Add Professor field
                     });
                 }
             }
