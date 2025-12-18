@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, BookOpen, Code, AlertCircle, MapPin, Download, User as PersonIcon } from 'lucide-react';
+import { Calendar, Clock, BookOpen, Code, AlertCircle, MapPin, Download, User as PersonIcon, Copy, Check } from 'lucide-react';
 import { generateICS, downloadICS } from '../utils/icsGenerator';
 import tutVideo from '../assets/tut.mp4';
 
@@ -72,6 +72,8 @@ const ExamItem = ({ exam, type }) => {
 };
 
 const ScheduleCard = ({ student }) => {
+    const [isCopied, setIsCopied] = React.useState(false);
+
     if (!student) return null;
 
     const theoryExams = student.theory;
@@ -80,6 +82,12 @@ const ScheduleCard = ({ student }) => {
     const handleExport = () => {
         const icsContent = generateICS(student);
         downloadICS(`${student.name.replace(/\s+/g, '_')}_Schedule.ics`, icsContent);
+    };
+
+    const handleCopyRoll = () => {
+        navigator.clipboard.writeText(student.rollNo);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
     };
 
     const container = {
@@ -119,9 +127,16 @@ const ScheduleCard = ({ student }) => {
                     <h2 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 mb-3 tracking-tight">
                         {student.name}
                     </h2>
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800/50 border border-white/10 text-cyan-400 font-mono text-lg md:text-xl tracking-wider">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800/50 border border-white/10 text-cyan-400 font-mono text-lg md:text-xl tracking-wider group/roll">
                         <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
                         {student.rollNo}
+                        <button
+                            onClick={handleCopyRoll}
+                            className="ml-2 p-1.5 hover:bg-slate-700/50 rounded-lg transition-colors text-slate-500 hover:text-cyan-400"
+                            title="Copy Roll Number"
+                        >
+                            {isCopied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
+                        </button>
                     </div>
                 </div>
             </div>
