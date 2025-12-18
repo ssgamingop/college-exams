@@ -12,7 +12,7 @@ A premium, modern web application for students to view their Theory and Practica
 *   **📅 Calendar Sync**: Download your schedule as an `.ics` file and add it to Google/Apple Calendar in one click.
 *   **� Copy Roll No**: One-click copy button for your Roll Number with instant visual feedback.
 *   **�📍 Detailed Info**: Complete exam details including Location, Panel Number, and **Professor Name** for practicals.
-*   **🎨 Cyberpunk UI**: A fully redesigned dark mode interface with neon accents, glassmorphism, and distinct themes for Theory (Purple) vs Practical (Cyan).
+*   **� Adaptive Theme**: Seamlessly switch between a **Cyberpunk Dark Mode** and a clean **Professional Light Mode** with smooth transitions.
 *   **⚡ Zero Lag**: Optimized performance with smart component rendering for instant feedback.
 *   **📱 Fully Responsive**: Looks amazing on phones, tablets, and desktops.
 *   **🛡️ Error Handling**: Gracefully handles missing data with "NA" fallbacks so the UI never breaks.
