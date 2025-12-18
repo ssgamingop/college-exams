@@ -5,9 +5,11 @@
   --font-sans: 'Outfit', sans-serif;
 }
 
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   font-family: 'Outfit', sans-serif;
-  color-scheme: dark;
+  color-scheme: light dark;
 }
 
 body {
@@ -15,6 +17,9 @@ body {
   background-color: #0f172a;
   /* slate-900 */
   overflow-x: hidden;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 500ms;
 }
 
 /* Custom Scrollbar */

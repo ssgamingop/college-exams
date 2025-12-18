@@ -11,20 +11,22 @@ const item = {
 
 const ExamItem = ({ exam, type }) => {
     const isTheory = type === 'theory';
-    const accentColor = isTheory ? 'text-purple-400' : 'text-cyan-400';
-    const borderColor = isTheory ? 'group-hover:border-purple-500/50' : 'group-hover:border-cyan-500/50';
+    const accentColor = isTheory ? 'text-purple-600 dark:text-purple-400' : 'text-cyan-600 dark:text-cyan-400';
+    const borderColor = isTheory ? 'hover:border-purple-500/50 dark:group-hover:border-purple-500/50' : 'hover:border-cyan-500/50 dark:group-hover:border-cyan-500/50';
     const shadowColor = isTheory ? 'hover:shadow-[0_0_30px_rgba(168,85,247,0.15)]' : 'hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]';
-    const badgeBg = isTheory ? 'bg-purple-400/10 text-purple-300 border-purple-400/20' : 'bg-cyan-400/10 text-cyan-300 border-cyan-400/20';
+    const badgeBg = isTheory
+        ? 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-400/10 dark:text-purple-300 dark:border-purple-400/20'
+        : 'bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-400/10 dark:text-cyan-300 dark:border-cyan-400/20';
 
     return (
         <motion.div
             variants={item}
-            className={`group relative bg-slate-950 text-left backdrop-blur-sm rounded-xl p-5 border border-white/5 ${borderColor} transition-all duration-300 ${shadowColor}`}
+            className={`group relative bg-white/50 dark:bg-slate-950 text-left backdrop-blur-sm rounded-xl p-5 border border-slate-200 dark:border-white/5 ${borderColor} transition-all duration-300 ${shadowColor}`}
         >
             <div className="flex flex-col gap-4">
                 {/* Subject Header */}
                 <div className="flex flex-col gap-3">
-                    <h4 className={`text-lg md:text-xl font-bold text-slate-100 leading-tight group-hover:text-white transition-colors flex-1`}>
+                    <h4 className={`text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 leading-tight group-hover:text-black dark:group-hover:text-white transition-colors flex-1`}>
                         {exam.subject}
                     </h4>
                     <div className="flex flex-wrap items-center gap-2">
@@ -55,12 +57,12 @@ const ExamItem = ({ exam, type }) => {
                 </div>
 
                 {/* Meta Details */}
-                <div className="flex flex-wrap gap-3 text-sm font-medium text-slate-300">
-                    <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-white/5">
+                <div className="flex flex-wrap gap-3 text-sm font-medium text-slate-600 dark:text-slate-300">
+                    <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/5 transition-colors duration-300">
                         <Calendar size={14} className={accentColor} />
                         {exam.date || 'NA'}
                     </div>
-                    <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-white/5">
+                    <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/5 transition-colors duration-300">
                         <Clock size={14} className={accentColor} />
                         {exam.time || 'NA'}
                     </div>
@@ -109,7 +111,7 @@ const ScheduleCard = ({ student }) => {
             className="w-full space-y-8"
         >
             {/* Student Header */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 md:p-8 text-center border border-white/10 shadow-2xl group">
+            <div className="relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-white dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 rounded-3xl p-6 md:p-8 text-center border border-slate-200 dark:border-white/10 shadow-2xl group transition-all duration-500">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500" />
                 <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:16px_16px]" />
 
@@ -117,22 +119,22 @@ const ScheduleCard = ({ student }) => {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handleExport}
-                    className="absolute top-4 right-4 p-2 bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-cyan-400 rounded-xl transition-colors border border-white/5 backdrop-blur-sm z-20"
+                    className="absolute top-4 right-4 p-2 bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 rounded-xl transition-colors border border-slate-200 dark:border-white/5 backdrop-blur-sm z-20"
                     title="Export to Calendar (.ics)"
                 >
                     <Download size={20} />
                 </motion.button>
 
                 <div className="relative z-10">
-                    <h2 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 mb-3 tracking-tight">
+                    <h2 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-700 to-slate-900 dark:from-white dark:via-slate-200 dark:to-slate-400 mb-3 tracking-tight transition-all duration-500">
                         {student.name}
                     </h2>
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800/50 border border-white/10 text-cyan-400 font-mono text-lg md:text-xl tracking-wider group/roll">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 text-cyan-600 dark:text-cyan-400 font-mono text-lg md:text-xl tracking-wider group/roll transition-colors duration-300">
                         <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
                         {student.rollNo}
                         <button
                             onClick={handleCopyRoll}
-                            className="ml-2 p-1.5 hover:bg-slate-700/50 rounded-lg transition-colors text-slate-500 hover:text-cyan-400"
+                            className="ml-2 p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/50 rounded-lg transition-colors text-slate-500 dark:text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-400"
                             title="Copy Roll Number"
                         >
                             {isCopied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
@@ -143,20 +145,20 @@ const ScheduleCard = ({ student }) => {
 
             <div className="grid lg:grid-cols-2 gap-8 items-start">
                 {/* Theory Section */}
-                <div className="flex flex-col h-full bg-slate-900/20 rounded-3xl p-6 border border-white/5">
+                <div className="flex flex-col h-full bg-white/40 dark:bg-slate-900/20 rounded-3xl p-6 border border-slate-200 dark:border-white/5 transition-colors duration-500">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2.5 bg-purple-500/10 rounded-xl border border-purple-500/20 text-purple-400">
                             <BookOpen size={24} />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-bold text-white">Theory</h3>
+                            <h3 className="text-2xl font-bold text-slate-800 dark:text-white transition-colors">Theory</h3>
                             <p className="text-slate-500 text-sm">Classroom Based</p>
                         </div>
                     </div>
 
                     <div className="space-y-4 flex-1">
                         {theoryExams.length === 0 ? (
-                            <div className="h-full min-h-[200px] flex flex-col items-center justify-center bg-slate-900/40 rounded-2xl p-8 border border-white/5 border-dashed text-center text-slate-500">
+                            <div className="h-full min-h-[200px] flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-900/40 rounded-2xl p-8 border border-slate-200 dark:border-white/5 border-dashed text-center text-slate-500 transition-colors duration-300">
                                 <AlertCircle className="mb-3 opacity-50 w-12 h-12" />
                                 <p>No theory exams scheduled.</p>
                             </div>
@@ -169,20 +171,20 @@ const ScheduleCard = ({ student }) => {
                 </div>
 
                 {/* Practical Section */}
-                <div className="flex flex-col h-full bg-slate-900/20 rounded-3xl p-6 border border-white/5">
+                <div className="flex flex-col h-full bg-white/40 dark:bg-slate-900/20 rounded-3xl p-6 border border-slate-200 dark:border-white/5 transition-colors duration-500">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2.5 bg-cyan-500/10 rounded-xl border border-cyan-500/20 text-cyan-400">
                             <Code size={24} />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-bold text-white">Practical</h3>
+                            <h3 className="text-2xl font-bold text-slate-800 dark:text-white transition-colors">Practical</h3>
                             <p className="text-slate-500 text-sm">Lab & Vivas</p>
                         </div>
                     </div>
 
                     <div className="space-y-4 flex-1">
                         {practicalExams.length === 0 ? (
-                            <div className="h-full min-h-[200px] flex flex-col items-center justify-center bg-slate-900/40 rounded-2xl p-8 border border-white/5 border-dashed text-center text-slate-500">
+                            <div className="h-full min-h-[200px] flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-900/40 rounded-2xl p-8 border border-slate-200 dark:border-white/5 border-dashed text-center text-slate-500 transition-colors duration-300">
                                 <AlertCircle className="mb-3 opacity-50 w-12 h-12" />
                                 <p>No practical exams scheduled.</p>
                             </div>
@@ -198,22 +200,22 @@ const ScheduleCard = ({ student }) => {
             {/* Calendar Tutorial Section */}
             <motion.div
                 variants={item}
-                className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 md:p-8 border border-white/10 relative overflow-hidden"
+                className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/10 relative overflow-hidden transition-colors duration-500"
             >
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500" />
 
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
                     <div className="space-y-4 text-center md:text-left max-w-xl">
-                        <div className="flex items-center justify-center md:justify-start gap-3 text-cyan-400 mb-2">
+                        <div className="flex items-center justify-center md:justify-start gap-3 text-cyan-600 dark:text-cyan-400 mb-2">
                             <Calendar size={24} />
-                            <h3 className="text-2xl font-bold text-white">Sync with your Calendar</h3>
+                            <h3 className="text-2xl font-bold text-slate-800 dark:text-white transition-colors">Sync with your Calendar</h3>
                         </div>
-                        <p className="text-slate-400 leading-relaxed">
+                        <p className="text-slate-600 dark:text-slate-400 leading-relaxed transition-colors">
                             Never miss an exam! Download your schedule and add it directly to your calendar in one click.
                         </p>
-                        <ol className="text-sm text-slate-500 space-y-2 list-decimal list-inside bg-slate-950/50 p-4 rounded-xl border border-white/5">
+                        <ol className="text-sm text-slate-600 dark:text-slate-500 space-y-2 list-decimal list-inside bg-white dark:bg-slate-950/50 p-4 rounded-xl border border-slate-200 dark:border-white/5 transition-colors">
                             <li>Click the <strong>Add to Calendar</strong> button</li>
-                            <li>Open the downloaded <code className="text-cyan-400">.ics</code> file</li>
+                            <li>Open the downloaded <code className="text-cyan-600 dark:text-cyan-400">.ics</code> file</li>
                             <li>Click <strong>Add All</strong> to save to your calendar</li>
                         </ol>
                     </div>

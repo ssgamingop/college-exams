@@ -1,36 +1,64 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Github, Instagram } from 'lucide-react';
+import { Github, Instagram, Sun, Moon } from 'lucide-react';
 import Search from './components/Search';
 import ScheduleCard from './components/ScheduleCard';
 import examData from './data/exam_data.json';
 
 function App() {
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') || 'dark';
+    }
+    return 'dark';
+  });
+
+  React.useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-cyan-500/30">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans selection:bg-cyan-500/30 transition-colors duration-500">
       {/* Header */}
       <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="fixed top-0 left-0 right-0 z-50 px-4 md:px-6 py-4 flex justify-between items-center bg-slate-950/50 backdrop-blur-md border-b border-white/5"
+        className="fixed top-0 left-0 right-0 z-50 px-4 md:px-6 py-4 flex justify-between items-center bg-white/50 dark:bg-slate-950/50 backdrop-blur-md border-b border-slate-200/50 dark:border-white/5 transition-colors duration-500"
       >
         <div className="text-sm font-medium text-slate-400">
           Created by <span className="text-cyan-400 font-bold">Somyajeet Singh</span>
         </div>
         <div className="flex items-center gap-4">
-          <a href="https://github.com/ssgamingop" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-colors">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={toggleTheme}
+            className="p-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 transition-colors"
+          >
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          </motion.button>
+          <a href="https://github.com/ssgamingop" target="_blank" rel="noopener noreferrer" className="text-slate-500 dark:text-slate-400 hover:text-black dark:hover:text-white transition-colors">
             <Github size={20} />
           </a>
-          <a href="https://instagram.com/somyajeet.op" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-pink-500 transition-colors">
+          <a href="https://instagram.com/somyajeet.op" target="_blank" rel="noopener noreferrer" className="text-slate-500 dark:text-slate-400 hover:text-pink-500 transition-colors">
             <Instagram size={20} />
           </a>
         </div>
       </motion.header>
 
       {/* Subtle Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      < div className="fixed inset-0 overflow-hidden pointer-events-none" >
         <motion.div
           animate={{
             scale: [1, 1.2, 1],
@@ -51,7 +79,7 @@ function App() {
           transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
           className="absolute bottom-0 right-1/4 w-64 h-64 md:w-96 md:h-96 bg-purple-900/20 rounded-full blur-[128px]"
         />
-      </div>
+      </div >
 
       <div className="relative z-10 container mx-auto px-4 py-16 max-w-5xl">
         <motion.div
@@ -59,7 +87,7 @@ function App() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 tracking-tight text-white">
+          <h1 className="text-4xl md:text-6xl font-bold mb-4 tracking-tight text-slate-900 dark:text-white transition-colors duration-500">
             Exam Scheduler
           </h1>
           <p className="text-slate-400 text-lg">
@@ -91,7 +119,7 @@ function App() {
           </motion.div>
         )}
       </div>
-    </div>
+    </div >
   );
 }
 

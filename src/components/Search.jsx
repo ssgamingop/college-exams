@@ -27,8 +27,8 @@ const Search = ({ students, onSelectStudent }) => {
 
     return (
         <div className="relative w-full max-w-lg mx-auto z-50">
-            <div className={`relative flex items-center bg-slate-800 border border-slate-700 rounded-xl overflow-hidden transition-all duration-300 ${isFocused ? 'ring-2 ring-cyan-500/50 border-cyan-500/50' : 'hover:border-slate-600'}`}>
-                <SearchIcon className="w-5 h-5 text-slate-400 ml-4" />
+            <div className={`relative flex items-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden transition-all duration-300 ${isFocused ? 'ring-2 ring-cyan-500/50 border-cyan-500/50' : 'hover:border-slate-300 dark:hover:border-slate-600'}`}>
+                <SearchIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 ml-4 transition-colors" />
                 <input
                     type="text"
                     value={query}
@@ -36,7 +36,7 @@ const Search = ({ students, onSelectStudent }) => {
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setTimeout(() => setIsFocused(false), 200)}
                     placeholder="Search by Name or Roll No..."
-                    className="w-full bg-transparent text-white text-base px-4 py-4 outline-none placeholder-slate-500"
+                    className="w-full bg-transparent text-slate-900 dark:text-white text-base px-4 py-4 outline-none placeholder-slate-500 dark:placeholder-slate-500 transition-colors"
                 />
                 {query && (
                     <button
@@ -45,7 +45,7 @@ const Search = ({ students, onSelectStudent }) => {
                             setSuggestions([]);
                             onSelectStudent(null);
                         }}
-                        className="p-2 text-slate-400 hover:text-white transition-colors mr-2"
+                        className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors mr-2"
                     >
                         <X size={20} />
                     </button>
@@ -58,15 +58,15 @@ const Search = ({ students, onSelectStudent }) => {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto"
+                        className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto z-50"
                     >
                         {suggestions.map((student) => (
                             <div
                                 key={student.rollNo}
                                 onClick={() => handleSelect(student)}
-                                className="px-4 py-3 hover:bg-slate-700 cursor-pointer transition-colors border-b border-slate-700/50 last:border-none group"
+                                className="px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer transition-colors border-b border-slate-200 dark:border-slate-700/50 last:border-none group"
                             >
-                                <div className="text-slate-200 font-medium group-hover:text-cyan-400 transition-colors">{student.name}</div>
+                                <div className="text-slate-700 dark:text-slate-200 font-medium group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{student.name}</div>
                                 <div className="text-xs text-slate-500">{student.rollNo}</div>
                             </div>
                         ))}
