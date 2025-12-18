@@ -76,12 +76,15 @@ export const generateICS = (student) => {
     student.theory.forEach(exam => {
         const dt = parseDateTime(exam.date, exam.time);
         if (dt) {
+            let desc = `Subject: ${exam.subject}\\nType: Theory`;
+            if (exam.professor) desc += `\\nProfessor: ${exam.professor}`;
+
             events.push({
                 summary: `Theory Exam: ${exam.subject}`,
                 start: dt.start,
                 end: dt.end,
-                description: `Subject: ${exam.subject}\\nType: Theory`,
-                location: 'Exam Hall'
+                description: desc,
+                location: exam.location && exam.location !== 'TBD' ? exam.location : 'Exam Hall'
             });
         }
     });
@@ -90,12 +93,16 @@ export const generateICS = (student) => {
     student.practical.forEach(exam => {
         const dt = parseDateTime(exam.date, exam.time);
         if (dt) {
+            let desc = `Subject: ${exam.subject}\\nType: Practical`;
+            if (exam.professor) desc += `\\nProfessor: ${exam.professor}`;
+            if (exam.panel) desc += `\\nPanel: ${exam.panel}`;
+
             events.push({
                 summary: `Practical Exam: ${exam.subject}`,
                 start: dt.start,
                 end: dt.end,
-                description: `Subject: ${exam.subject}\\nType: Practical`,
-                location: 'Lab'
+                description: desc,
+                location: exam.location && exam.location !== 'TBD' ? exam.location : 'Lab'
             });
         }
     });

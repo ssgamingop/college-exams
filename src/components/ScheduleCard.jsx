@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, BookOpen, Code, AlertCircle, MapPin, Download } from 'lucide-react';
+import { Calendar, Clock, BookOpen, Code, AlertCircle, MapPin, Download, User as PersonIcon } from 'lucide-react';
 import { generateICS, downloadICS } from '../utils/icsGenerator';
 import tutVideo from '../assets/tut.mp4';
 
@@ -19,31 +19,43 @@ const ExamItem = ({ exam, type }) => {
     return (
         <motion.div
             variants={item}
-            className={`group relative bg-slate-900/80 backdrop-blur-sm rounded-xl p-5 border border-white/5 ${borderColor} transition-all duration-300 ${shadowColor}`}
+            className={`group relative bg-slate-950 text-left backdrop-blur-sm rounded-xl p-5 border border-white/5 ${borderColor} transition-all duration-300 ${shadowColor}`}
         >
             <div className="flex flex-col gap-4">
                 {/* Subject Header */}
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                <div className="flex flex-col gap-3">
                     <h4 className={`text-lg md:text-xl font-bold text-slate-100 leading-tight group-hover:text-white transition-colors flex-1`}>
                         {exam.subject}
                     </h4>
-                    <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        {exam.location && (
+                    <div className="flex flex-wrap items-center gap-2">
+                        {exam.location && exam.location !== 'TBD' && (
                             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${badgeBg}`}>
                                 <MapPin size={12} />
                                 <span>{exam.location}</span>
                             </div>
                         )}
-                        {exam.panel && exam.panel !== 'Unknown' && (
+                        {exam.professor && (
                             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${badgeBg}`}>
-                                <span>{exam.panel}</span>
+                                <PersonIcon size={12} />
+                                <span>{exam.professor}</span>
+                            </div>
+                        )}
+                        {/* Panel Display Logic */}
+                        {exam.panel && exam.panel !== 'Unknown' && (
+                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${badgeBg} opacity-90`}>
+                                <span>
+                                    {/* If professor is already shown, just show "Panel X" to avoid redundancy */}
+                                    {exam.professor ?
+                                        exam.panel.split(' ').slice(0, 2).join(' ') :
+                                        exam.panel}
+                                </span>
                             </div>
                         )}
                     </div>
                 </div>
 
                 {/* Meta Details */}
-                <div className="flex flex-wrap gap-3 text-sm font-medium text-slate-400">
+                <div className="flex flex-wrap gap-3 text-sm font-medium text-slate-300">
                     <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-white/5">
                         <Calendar size={14} className={accentColor} />
                         {exam.date || 'NA'}
@@ -56,6 +68,7 @@ const ExamItem = ({ exam, type }) => {
             </div>
         </motion.div>
     );
+
 };
 
 const ScheduleCard = ({ student }) => {
