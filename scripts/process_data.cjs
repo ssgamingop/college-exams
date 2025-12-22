@@ -74,24 +74,47 @@ function processData() {
 
         const subject = cols[1];
         const timeSlot = cols[3];
-        const rollRange = cols[4]; // "150096725002 to 150096725027"
+        const rollField = cols[4]; // "150096725002 to 150096725027" or mixed
         const location = cols[6]; // Class Details
 
-        if (!rollRange || !rollRange.includes(' to ')) continue;
+        if (!rollField) continue;
 
-        const [startRoll, endRoll] = rollRange.split(' to ').map(r => BigInt(r.trim()));
+        const parts = rollField.split(',').map(p => p.trim());
 
-        // Assign to students in range
-        Object.values(students).forEach(student => {
-            const studentRoll = BigInt(student.rollNo);
-            if (studentRoll >= startRoll && studentRoll <= endRoll) {
-                student.theory.push({
-                    date: currentTheoryDate,
-                    subject,
-                    time: timeSlot,
-                    location: location,
-                    type: 'Theory'
+        parts.forEach(part => {
+            if (part.includes(' to ')) {
+                const [startRoll, endRoll] = part.split(' to ').map(r => BigInt(r.trim()));
+                // Assign to students in range
+                Object.values(students).forEach(student => {
+                    const studentRoll = BigInt(student.rollNo);
+                    if (studentRoll >= startRoll && studentRoll <= endRoll) {
+                        student.theory.push({
+                            date: currentTheoryDate,
+                            subject,
+                            time: timeSlot,
+                            location: location,
+                            type: 'Theory'
+                        });
+                    }
                 });
+            } else {
+                // Single roll number
+                try {
+                    const singleRoll = BigInt(part);
+                    Object.values(students).forEach(student => {
+                        if (BigInt(student.rollNo) === singleRoll) {
+                            student.theory.push({
+                                date: currentTheoryDate,
+                                subject,
+                                time: timeSlot,
+                                location: location,
+                                type: 'Theory'
+                            });
+                        }
+                    });
+                } catch (e) {
+                    console.warn(`Skipping invalid roll number part: ${part}`);
+                }
             }
         });
     }

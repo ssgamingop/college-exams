@@ -48,8 +48,11 @@ A premium, modern web application for students to view their Theory and Practica
 The application uses a static JSON file (`src/data/exam_data.json`) generated from CSV files.
 
 **To update the data:**
-
 1.  Place your new CSV files in the `csv_data/` directory.
+    *   **Important**: Ensure the filenames match the following or update the paths in `scripts/process_data.cjs`:
+        *   Mapping: `Batch25-29__Sem1-Sprint1 - Data.csv`
+        *   Theory: `Scheduling Plan - Students  - 25 - 29 (Theory) - Sprint 2.csv`
+        *   Practical: `Scheduling Plan - Students  - Batch25-29 (Sprint 2).csv`
 2.  Run the processing script:
     ```bash
     node scripts/process_data.cjs
