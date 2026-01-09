@@ -34,6 +34,13 @@ function readFile(filePath) {
     return fs.readFileSync(filePath, 'utf-8').split(/\r?\n/).filter(line => line.trim() !== '');
 }
 
+/**
+ * Build student records from CSV inputs, attach theory and practical schedules, and write the aggregated JSON output.
+ *
+ * Reads mapping, theory, and practical CSV files; populates each student's `theory` and `practical` arrays with scheduled items
+ * (theory entries matched by roll-number ranges; practical entries matched by normalized student names and annotated with subject, panel, time, and location);
+ * ensures the output directory exists and writes the resulting array of student objects to OUTPUT_JSON.
+ */
 function processData() {
     console.log('Processing data...');
 

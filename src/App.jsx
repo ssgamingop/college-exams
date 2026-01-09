@@ -5,6 +5,11 @@ import Search from './components/Search';
 import ScheduleCard from './components/ScheduleCard';
 import examData from './data/exam_data.json';
 
+/**
+ * Root React component for the Exam Scheduler application, managing selected student state and composing header, animated background, search, and schedule display.
+ *
+ * @returns {JSX.Element} The root React element that renders the app UI, including the header, animated background visuals, Search component, and ScheduleCard.
+ */
 function App() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [theme, setTheme] = useState(() => {
