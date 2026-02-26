@@ -91,7 +91,7 @@ function App() {
             Exam Scheduler
           </h1>
           <p className="text-slate-400 text-lg">
-            Batch 25-29 • Semester 1
+            Batch 25-29 • Semester 2 • Sprint 1
           </p>
         </motion.div>
 

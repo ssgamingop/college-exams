@@ -4,8 +4,8 @@ const path = require('path');
 // File paths
 // File paths
 const MAPPING_CSV = path.join(__dirname, '../csv_data/Batch25-29__Sem1-Sprint1 - Data.csv');
-const THEORY_CSV = path.join(__dirname, '../csv_data/Scheduling Plan - Students  - 25 - 29 (Theory) - Sprint 2.csv');
-const PRACTICAL_CSV = path.join(__dirname, '../csv_data/Scheduling Plan - Students  - Batch25-29 (Sprint 2).csv');
+const THEORY_CSV = path.join(__dirname, '../csv_data/Scheduling Plan - Students  - 25 - 29 (Theory) - Sprint1.csv');
+const PRACTICAL_CSV = path.join(__dirname, '../csv_data/Scheduling Plan - Students  - Batch 2025 -29 .csv');
 const OUTPUT_JSON = path.join(__dirname, '../src/data/exam_data.json');
 
 // Helper to parse CSV line
