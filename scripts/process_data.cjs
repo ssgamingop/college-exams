@@ -5,7 +5,7 @@ const path = require('path');
 // File paths
 const MAPPING_CSV = path.join(__dirname, '../csv_data/Batch25-29__Sem1-Sprint1 - Data.csv');
 const THEORY_CSV = path.join(__dirname, '../csv_data/Scheduling Plan - Students  - 25 - 29 (Theory) - Sprint1.csv');
-const PRACTICAL_CSV = path.join(__dirname, '../csv_data/Scheduling Plan - Students  - Batch 2025 -29 .csv');
+const PRACTICAL_CSV = path.join(__dirname, '../Scheduling Plan - Students  - Batch 2025 -29  (1).csv');
 const OUTPUT_JSON = path.join(__dirname, '../src/data/exam_data.json');
 
 // Helper to parse CSV line
@@ -134,38 +134,28 @@ function processData() {
     let subjectMap = {}; // colIndex -> { subject, panel, professor }
     let venueMap = {}; // colIndex -> Venue Name
 
-    // Helper to parse header for Panel + Subject + Professor
     function parsePanelHeader(header) {
-        // Expected formats: "Panel 1 Prof. Vishakha - Python" or "Panel 2 - Subject"
         let subject = '';
         let professor = '';
         let panel = '';
 
-        const cleanHeader = header.replace(/\s+/g, ' ');
-        const parts = cleanHeader.split(' - ');
-
-        if (parts.length > 1) {
-            subject = parts.slice(1).join(' - ').trim();
-            const prefix = parts[0];
-
-            // Extract Panel
-            const panelMatch = prefix.match(/(Panel\s*\d+|Batch\s*\d+)/i);
-            panel = panelMatch ? panelMatch[0] : 'Unknown';
-
-            // Extract Professor
-            const profMatch = prefix.match(/Prof\.?\s*(.+)/i);
-            if (profMatch) {
-                // If regex captured "Prof. Name", use it. remove "Panel 1" if stuck to it? 
-                // straightforward: just check if "Prof" exists in prefix
-                const prefixParts = prefix.split(/Prof\.?/i);
-                if (prefixParts.length > 1) {
-                    professor = 'Prof. ' + prefixParts[1].trim();
-                }
-            }
+        const cleanHeader = header.replace(/\s+/g, ' ').trim();
+        const match = cleanHeader.match(/^(Panel\s*\d+|Batch\s*\d+)(?:\s*\((.*?)\))?\s*-\s*(.*)$/i);
+        if (match) {
+            panel = match[1].trim();
+            professor = match[2] ? match[2].trim() : '';
+            subject = match[3] ? match[3].trim() : '';
         } else {
-            subject = header.trim();
-            panel = 'Unknown';
+            const parts = cleanHeader.split(' - ');
+            if (parts.length > 1) {
+                 subject = parts.slice(1).join(' - ').trim();
+                 panel = parts[0].trim();
+            } else {
+                 subject = cleanHeader;
+                 panel = 'Unknown';
+            }
         }
+
         return { subject, panel, professor };
     }
 
@@ -223,7 +213,13 @@ function processData() {
 
                 if (student) {
                     const headerInfo = subjectMap[j] || { subject: 'Unknown', panel: 'Unknown' };
-                    let location = venueMap[j] || 'TBD';
+                    let baseLocation = venueMap[j] || 'TBD';
+                    let professor = headerInfo.professor || '';
+                    
+                    let location = baseLocation;
+                    if (professor) {
+                        location = `${baseLocation} (${professor})`;
+                    }
 
                     student.practical.push({
                         date: currentPracticalDate,
@@ -232,7 +228,7 @@ function processData() {
                         time: time.trim(),
                         location: location,
                         type: 'Practical',
-                        professor: headerInfo.professor // Add Professor field
+                        professor: professor
                     });
                 }
             }
