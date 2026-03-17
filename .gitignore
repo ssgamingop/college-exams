@@ -7,10 +7,29 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+<<<<<<< HEAD
 node_modules
 dist
 dist-ssr
 *.local
+=======
+# Dependencies
+node_modules
+
+# Build output
+dist
+dist-ssr
+
+# Local environment files
+*.local
+.env
+
+# CSV files (ignore uploaded schedule data)
+*.csv
+
+# Python files
+*.py
+>>>>>>> main
 
 # Editor directories and files
 .vscode/*
@@ -21,4 +40,8 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
+<<<<<<< HEAD
 *.sw?
+=======
+*.sw?
+>>>>>>> main
