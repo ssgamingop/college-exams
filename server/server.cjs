@@ -16,18 +16,29 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/exam_s
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: '*', // Allow all origins for the public API (Upload is password-protected)
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
 
-// Mongoose Connection
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Successfully connected to MongoDB.'))
-  .catch((err) => {
+// Serverless-Safe Mongoose Connection Middleware
+const connectDB = async (req, res, next) => {
+  if (mongoose.connection.readyState >= 1) {
+    return next(); // Already connected
+  }
+  try {
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000 // Don't hang indefinitely
+    });
+    console.log('Successfully connected to MongoDB (Serverless).');
+    next();
+  } catch (err) {
     console.error('MongoDB connection error:', err);
-    process.exit(1);
-  });
+    res.status(500).json({ error: 'Database Connection Failed', details: err.message });
+  }
+};
+
+app.use(connectDB);
 
 // --- API Routes ---
 
@@ -54,7 +65,7 @@ app.get('/api/students/search', async (req, res) => {
     res.json(students);
   } catch (error) {
     console.error('Error searching students:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error', details: error.message || error.toString() });
   }
 });
 

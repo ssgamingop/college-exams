@@ -17,11 +17,12 @@ export async function searchStudents(query) {
   try {
     const response = await fetch(`${API_BASE}/api/students/search?q=${encodeURIComponent(query.trim())}`);
     if (!response.ok) {
-      throw new Error(`Search request failed with status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.details || errorData.error || `Search request failed with status: ${response.status}`);
     }
     return await response.json();
   } catch (error) {
-    console.error('Error in searchStudents API utility:', error);
+    console.error('🔴 API Backend Error (searchStudents):', error.message || error);
     return [];
   }
 }
@@ -39,11 +40,12 @@ export async function getStudentByRoll(rollNo) {
       return null;
     }
     if (!response.ok) {
-      throw new Error(`Fetch student roll request failed with status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.details || errorData.error || `Fetch request failed with status: ${response.status}`);
     }
     return await response.json();
   } catch (error) {
-    console.error('Error in getStudentByRoll API utility:', error);
+    console.error('🔴 API Backend Error (getStudentByRoll):', error.message || error);
     return null;
   }
 }
