@@ -38,7 +38,7 @@ function App() {
         className="fixed top-0 left-0 right-0 z-50 px-4 md:px-8 py-4 flex justify-between items-center bg-white/70 dark:bg-[#0B1120]/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/5 transition-colors duration-500"
       >
         <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
-          Created by <span className="text-cyan-500 font-bold">Somyajeet Singh</span>
+          Created by <a href="https://somyacodes.in" target="_blank"><span className="text-cyan-500 font-bold">Somyajeet Singh</span></a>
         </div>
         <div className="flex items-center gap-4">
           <motion.button
