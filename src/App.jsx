@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Github, Instagram, Sun, Moon } from 'lucide-react';
+import { Github, Instagram, Sun, Moon, Database } from 'lucide-react';
 import Search from './components/Search';
 import ScheduleCard from './components/ScheduleCard';
-import examData from './data/exam_data.json';
+import AdminModal from './components/AdminModal';
 
 function App() {
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [theme, setTheme] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') || 'dark';
@@ -29,17 +30,26 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans selection:bg-cyan-500/30 transition-colors duration-500">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] text-slate-800 dark:text-slate-200 font-sans selection:bg-cyan-500/30 transition-colors duration-500">
       {/* Header */}
       <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="fixed top-0 left-0 right-0 z-50 px-4 md:px-6 py-4 flex justify-between items-center bg-white/50 dark:bg-slate-950/50 backdrop-blur-md border-b border-slate-200/50 dark:border-white/5 transition-colors duration-500"
+        className="fixed top-0 left-0 right-0 z-50 px-4 md:px-8 py-4 flex justify-between items-center bg-white/70 dark:bg-[#0B1120]/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/5 transition-colors duration-500"
       >
-        <div className="text-sm font-medium text-slate-400">
-          Created by <span className="text-cyan-400 font-bold">Somyajeet Singh</span>
+        <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          Created by <span className="text-cyan-500 font-bold">Somyajeet Singh</span>
         </div>
         <div className="flex items-center gap-4">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setIsAdminOpen(true)}
+            className="p-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 transition-colors"
+            title="Admin: Sync Database"
+          >
+            <Database size={20} className="text-cyan-500" />
+          </motion.button>
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -81,7 +91,7 @@ function App() {
         />
       </div >
 
-      <div className="relative z-10 container mx-auto px-4 py-16 max-w-5xl">
+      <div className="relative z-10 container mx-auto px-4 pt-32 pb-16 max-w-5xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -96,7 +106,6 @@ function App() {
         </motion.div>
 
         <Search
-          students={examData}
           onSelectStudent={setSelectedStudent}
         />
 
@@ -119,6 +128,14 @@ function App() {
           </motion.div>
         )}
       </div>
+
+      <AdminModal
+        isOpen={isAdminOpen}
+        onClose={() => setIsAdminOpen(false)}
+        onSyncSuccess={() => {
+          setSelectedStudent(null);
+        }}
+      />
     </div >
   );
 }
