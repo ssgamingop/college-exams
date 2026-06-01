@@ -42,7 +42,7 @@ A premium, modern web application for students to view their Theory and Practica
     ```env
     PORT=5001
     MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/exam_scheduler?retryWrites=true&w=majority
-    ADMIN_PASSWORD=admin123
+    ADMIN_PASSWORD=your_secure_admin_password_here
     NODE_ENV=development
     ```
 
@@ -66,7 +66,7 @@ This application parses data entirely in-memory directly in the browser and push
    * **Mapping CSV** (Roll No ↔ Name)
    * **Theory CSV** (Theory Dates & Location)
    * **Practical CSV** (Practical Lab Viva Slots)
-4. Enter your `ADMIN_PASSWORD` (defaults to `admin123`).
+4. Enter your `ADMIN_PASSWORD` (as configured in the server's `.env` file).
 5. Click **Sync Database** to dynamically clear the old cloud database and populate the new schedules!
 
 ---

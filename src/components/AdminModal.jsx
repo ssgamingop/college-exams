@@ -232,7 +232,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
                       </label>
                       <input
                         type="password"
-                        placeholder="Enter admin password (default: admin123)..."
+                        placeholder="Enter admin authorization password..."
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required

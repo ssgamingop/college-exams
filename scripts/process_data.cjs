@@ -2,10 +2,9 @@ const fs = require('fs');
 const path = require('path');
 
 // File paths
-// File paths
 const MAPPING_CSV = path.join(__dirname, '../csv_data/Batch25-29__Sem1-Sprint1 - Data.csv');
-const THEORY_CSV = path.join(__dirname, '../csv_data/Scheduling Plan - Students  - 25 - 29 (Theory) - Sprint1.csv');
-const PRACTICAL_CSV = path.join(__dirname, '../csv_data/Scheduling Plan - Students  - Batch 2025 -29 .csv');
+const THEORY_CSV = path.join(__dirname, '../csv_data/theory.csv');
+const PRACTICAL_CSV = path.join(__dirname, '../csv_data/panel.csv');
 const OUTPUT_JSON = path.join(__dirname, '../src/data/exam_data.json');
 
 // Helper to parse CSV line
@@ -67,6 +66,7 @@ function processData() {
     // 2. Process Theory Schedule (Range based)
     const theoryLines = readFile(THEORY_CSV);
     let currentTheoryDate = '';
+    let currentSubject = '';
 
     // Skip header rows if any. Looking at file, line 2 has headers: Date,Subject,Mode of Exam,Time Slot ,Roll Number,No. of Students,Class Details
     // Data starts from line 3.
@@ -77,9 +77,10 @@ function processData() {
 
         // Date is sometimes empty, meaning it carries over from previous row? 
         // Looking at file: "23rd December 2025" is in first row of block. Subsequent rows have empty date.
-        if (cols[0]) currentTheoryDate = cols[0];
+        if (cols[0] && cols[0].toLowerCase().trim() !== 'date') currentTheoryDate = cols[0];
+        if (cols[1] && cols[1].toLowerCase().trim() !== 'subject') currentSubject = cols[1];
 
-        const subject = cols[1];
+        const subject = currentSubject;
         const timeSlot = cols[3];
         const rollField = cols[4]; // "150096725002 to 150096725027" or mixed
         const location = cols[6]; // Class Details
@@ -99,7 +100,7 @@ function processData() {
                             date: currentTheoryDate,
                             subject,
                             time: timeSlot,
-                            location: location,
+                            location: location || 'TBD',
                             type: 'Theory'
                         });
                     }
@@ -114,7 +115,7 @@ function processData() {
                                 date: currentTheoryDate,
                                 subject,
                                 time: timeSlot,
-                                location: location,
+                                location: location || 'TBD',
                                 type: 'Theory'
                             });
                         }
@@ -133,6 +134,7 @@ function processData() {
 
     let subjectMap = {}; // colIndex -> { subject, panel, professor }
     let venueMap = {}; // colIndex -> Venue Name
+    let tempPanels = {};
 
     function parsePanelHeader(header) {
         let subject = '';
@@ -170,6 +172,7 @@ function processData() {
             currentPracticalDate = dateCell.trim();
             venueMap = {};
             subjectMap = {};
+            tempPanels = {};
             continue;
         }
 
@@ -180,14 +183,31 @@ function processData() {
                     venueMap[idx] = cell.trim();
                 }
             });
-            continue;
+            if (!(row[0] && row[0].includes('Slot No.'))) {
+                continue;
+            }
         }
 
         // Detect Header Row (Slot No.)
-        if (row[1] === 'Time' || row[0] === 'Slot No.') {
+        if (row[0] && row[0].includes('Slot No.')) {
             row.forEach((cell, idx) => {
-                if (cell && (cell.includes('Panel') || cell.includes('Batch'))) {
-                    subjectMap[idx] = parsePanelHeader(cell);
+                if (idx >= 2 && cell) {
+                    tempPanels[idx] = cell.trim();
+                }
+            });
+            continue;
+        }
+
+        if (row[1] && row[1].includes('Time')) {
+            row.forEach((cell, idx) => {
+                if (idx >= 2 && cell) {
+                    const parsed = parsePanelHeader(cell);
+                    const panelName = tempPanels[idx] || 'Unknown';
+                    subjectMap[idx] = {
+                        subject: parsed.subject,
+                        panel: panelName,
+                        professor: parsed.professor
+                    };
                 }
             });
             continue;

@@ -191,14 +191,16 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
   // 2. Process Theory Schedule
   const theoryLines = getLines(theoryCsvText);
   let currentTheoryDate = '';
+  let currentSubject = '';
 
   for (let i = 2; i < theoryLines.length; i++) {
     const cols = parseLine(theoryLines[i]);
     if (cols.length < 5) continue;
 
-    if (cols[0]) currentTheoryDate = cols[0];
+    if (cols[0] && cols[0].toLowerCase().trim() !== 'date') currentTheoryDate = cols[0];
+    if (cols[1] && cols[1].toLowerCase().trim() !== 'subject') currentSubject = cols[1];
 
-    const subject = cols[1];
+    const subject = currentSubject;
     const timeSlot = cols[3];
     const rollField = cols[4];
     const location = cols[6]; // Class Details
@@ -252,6 +254,7 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
   let currentPracticalDate = '';
   let subjectMap = {};
   let venueMap = {};
+  let tempPanels = {};
 
   function parsePanelHeader(header) {
     let subject = '';
@@ -288,6 +291,7 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
       currentPracticalDate = dateCell.trim();
       venueMap = {};
       subjectMap = {};
+      tempPanels = {};
       continue;
     }
 
@@ -297,13 +301,31 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
           venueMap[idx] = cell.trim();
         }
       });
+      // Do not continue if it's also the Slot No./Panel header row
+      if (!(row[0] && row[0].includes('Slot No.'))) {
+        continue;
+      }
+    }
+
+    if (row[0] && row[0].includes('Slot No.')) {
+      row.forEach((cell, idx) => {
+        if (idx >= 2 && cell) {
+          tempPanels[idx] = cell.trim();
+        }
+      });
       continue;
     }
 
-    if (row[1] === 'Time' || row[0] === 'Slot No.') {
+    if (row[1] && row[1].includes('Time')) {
       row.forEach((cell, idx) => {
-        if (cell && (cell.includes('Panel') || cell.includes('Batch'))) {
-          subjectMap[idx] = parsePanelHeader(cell);
+        if (idx >= 2 && cell) {
+          const parsed = parsePanelHeader(cell);
+          const panelName = tempPanels[idx] || 'Unknown';
+          subjectMap[idx] = {
+            subject: parsed.subject,
+            panel: panelName,
+            professor: parsed.professor
+          };
         }
       });
       continue;
@@ -356,7 +378,10 @@ app.post('/api/students/upload-csv', async (req, res) => {
     const { mappingCsv, theoryCsv, practicalCsv, password } = req.body;
     
     // Authenticate Admin Password
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      return res.status(500).json({ error: 'Server Configuration Error: Admin authorization password is not configured on the server.' });
+    }
     if (typeof password !== 'string' || password.trim() !== adminPassword) {
       return res.status(401).json({ error: 'Unauthorized: Invalid Admin Password' });
     }
