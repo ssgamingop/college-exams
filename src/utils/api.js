@@ -126,11 +126,11 @@ export async function getSyncConfig() {
 /**
  * Syncs the database with student schedules from Google Sheets.
  */
-export async function syncGoogleSheets(mappingUrl, theoryUrl, practicalUrl, useAi, geminiApiKey, password) {
+export async function syncGoogleSheets(mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey, password) {
   const response = await fetch(`${API_BASE}/api/students/sync-sheets`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mappingUrl, theoryUrl, practicalUrl, useAi, geminiApiKey, password })
+    body: JSON.stringify({ mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey, password })
   });
   const data = await response.json();
   if (!response.ok) {

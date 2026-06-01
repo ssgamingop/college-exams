@@ -16,7 +16,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
     practical: ''
   });
   const [useAi, setUseAi] = useState(false);
-  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [groqApiKey, setGroqApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [hasServerApiKey, setHasServerApiKey] = useState(false);
 
@@ -94,9 +94,9 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
       setUseAi(!!config.useAi);
       setHasServerApiKey(!!config.hasApiKey);
       
-      // Restore locally saved Gemini API key if present
-      const savedKey = localStorage.getItem('geminiApiKey');
-      if (savedKey) setGeminiApiKey(savedKey);
+      // Restore locally saved Groq API key if present
+      const savedKey = localStorage.getItem('groqApiKey');
+      if (savedKey) setGroqApiKey(savedKey);
     } catch (err) {
       console.error('Failed to load sync configurations:', err);
     }
@@ -163,14 +163,14 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
 
     try {
       setStatus('loading');
-      setStatusMsg(useAi ? 'AI-Assisted parsing & syncing... (Consulting Gemini)' : 'Downloading & processing Google Sheets data...');
+      setStatusMsg(useAi ? 'AI-Assisted parsing & syncing... (Consulting Groq)' : 'Downloading & processing Google Sheets data...');
       setErrorMsg('');
 
       // Save API key locally if user entered one
-      if (geminiApiKey.trim()) {
-        localStorage.setItem('geminiApiKey', geminiApiKey.trim());
+      if (groqApiKey.trim()) {
+        localStorage.setItem('groqApiKey', groqApiKey.trim());
       } else {
-        localStorage.removeItem('geminiApiKey');
+        localStorage.removeItem('groqApiKey');
       }
 
       const result = await syncGoogleSheets(
@@ -178,7 +178,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
         sheetUrls.theory,
         sheetUrls.practical,
         useAi,
-        geminiApiKey.trim() || null,
+        groqApiKey.trim() || null,
         password
       );
 
@@ -479,7 +479,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
                                   <Sparkles size={14} className="text-cyan-500" />
                                   <span>AI-Assisted Self-Healing Parsing</span>
                                 </h4>
-                                <p className="text-[10px] text-slate-500 mt-0.5">Let Gemini parse if column names or table layouts change.</p>
+                                <p className="text-[10px] text-slate-500 mt-0.5">Let Groq parse if column names or table layouts change.</p>
                               </div>
                               <input
                                 type="checkbox"
@@ -493,16 +493,16 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
                               <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-100 dark:border-white/5 relative">
                                 <div className="flex justify-between items-center">
                                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                                    <span>Gemini API Key</span>
+                                    <span>Groq API Key</span>
                                     {hasServerApiKey && <span className="text-[9px] text-emerald-500 normal-case font-normal">(Server API key configured)</span>}
                                   </label>
                                 </div>
                                 <div className="relative">
                                   <input
                                     type={showApiKey ? "text" : "password"}
-                                    placeholder={hasServerApiKey ? "Using server environment key..." : "Paste your GEMINI_API_KEY here..."}
-                                    value={geminiApiKey}
-                                    onChange={(e) => setGeminiApiKey(e.target.value)}
+                                    placeholder={hasServerApiKey ? "Using server environment key..." : "Paste your GROQ_API_KEY here..."}
+                                    value={groqApiKey}
+                                    onChange={(e) => setGroqApiKey(e.target.value)}
                                     className="w-full pl-3 pr-10 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 focus:border-cyan-500/50 focus:outline-none text-xs text-slate-800 dark:text-white transition-all font-mono"
                                   />
                                   <button

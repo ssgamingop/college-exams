@@ -14,12 +14,15 @@
 
 body {
   margin: 0;
-  background-color: #0f172a;
-  /* slate-900 */
+  background-color: #f8fafc;
   overflow-x: hidden;
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 500ms;
+}
+
+.dark body {
+  background-color: #0b1120;
 }
 
 /* Custom Scrollbar */

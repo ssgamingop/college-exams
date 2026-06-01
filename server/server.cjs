@@ -261,7 +261,7 @@ app.get('/api/students/sync-config', async (req, res) => {
         console.error('Error reading config.json:', err);
       }
     }
-    const hasApiKey = !!process.env.GEMINI_API_KEY;
+    const hasApiKey = !!process.env.GROQ_API_KEY;
     res.json({ ...config, hasApiKey });
   } catch (error) {
     console.error('Error reading sync config:', error);
@@ -272,7 +272,7 @@ app.get('/api/students/sync-config', async (req, res) => {
 // 7. Sync database directly from Google Sheets (CSV Export format)
 app.post('/api/students/sync-sheets', adminUploadRateLimiter, async (req, res) => {
   try {
-    const { mappingUrl, theoryUrl, practicalUrl, useAi, geminiApiKey, password } = req.body;
+    const { mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey, password } = req.body;
     
     // Validate Admin password
     const adminPassword = process.env.ADMIN_PASSWORD;
@@ -319,12 +319,12 @@ app.post('/api/students/sync-sheets', adminUploadRateLimiter, async (req, res) =
     ]);
 
     // Use environment variable key if not passed from UI
-    const finalApiKey = geminiApiKey || process.env.GEMINI_API_KEY;
+    const finalApiKey = groqApiKey || process.env.GROQ_API_KEY;
 
     // Parse the fetched CSV content
     const studentsData = await parseCsvData(mappingCsv, theoryCsv, practicalCsv, {
       useAi: !!useAi,
-      geminiApiKey: finalApiKey
+      groqApiKey: finalApiKey
     });
 
     if (!studentsData || studentsData.length === 0) {

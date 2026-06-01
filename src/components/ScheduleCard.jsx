@@ -38,7 +38,7 @@ const ExamItem = ({ exam, type }) => {
                         {exam.subject}
                     </h4>
                     <div className="flex flex-wrap items-center gap-2">
-                        {exam.location && exam.location !== 'TBD' && (
+                        {exam.location && exam.location !== 'TBD' && exam.location.trim().toLowerCase() !== (exam.panel || '').trim().toLowerCase() && (
                             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${badgeBg}`}>
                                 <MapPin size={12} />
                                 <span>{exam.location}</span>
@@ -64,7 +64,7 @@ const ExamItem = ({ exam, type }) => {
                         {/* Render extra dynamic columns */}
                         {extraFields.map(key => (
                             <div key={key} className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${badgeBg} opacity-85`}>
-                                <span className="text-slate-400 dark:text-slate-500 font-normal">{formatKeyName(key)}:</span>
+                                <span className="opacity-70 font-normal">{formatKeyName(key)}: </span>
                                 <span>{exam[key]}</span>
                             </div>
                         ))}

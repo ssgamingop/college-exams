@@ -1,5 +1,3 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-
 /**
  * Extracts the direct CSV download link from a Google Sheets URL.
  * Supports standard sharing links and works with specific gid sheets.
@@ -170,18 +168,32 @@ function parseTheory(csvText, students, markers = {}) {
 
   for (let i = headerRowIdx + 1; i < lines.length; i++) {
     const cols = parseCsvLine(lines[i]);
-    if (cols.length < Math.max(dateIdx, subjectIdx, timeIdx, locationIdx, rollIdx) + 1) continue;
+    
+    // Ensure we have at least the columns up to the roll field (required for mapping)
+    const requiredIdx = Math.max(subjectIdx, timeIdx, rollIdx);
+    if (cols.length < requiredIdx + 1) continue;
 
-    const dateVal = cols[dateIdx];
-    const subjVal = cols[subjectIdx];
-    const timeVal = cols[timeIdx];
-    const locVal = cols[locationIdx];
-    const rollField = cols[rollIdx];
+    const dateVal = cols[dateIdx] || '';
+    const subjVal = cols[subjectIdx] || '';
+    const timeVal = cols[timeIdx] || '';
+    const locVal = cols[locationIdx] || '';
+    const rollField = cols[rollIdx] || '';
 
-    if (dateVal && dateVal.toLowerCase() !== 'date') currentDate = dateVal;
-    if (subjVal && subjVal.toLowerCase() !== 'subject') currentSubject = subjVal;
-    if (timeVal && timeVal.toLowerCase() !== 'time') currentTime = timeVal;
-    if (locVal && locVal.toLowerCase() !== 'location') currentLocation = locVal;
+    // Skip sub-header rows stacked inside the CSV
+    if (dateVal.toLowerCase().trim() === 'date' || subjVal.toLowerCase().trim() === 'subject' || rollField.toLowerCase().trim() === 'roll number') {
+      continue;
+    }
+
+    if (dateVal) currentDate = dateVal;
+    
+    // Reset carried over location when a new subject begins to prevent leakage
+    if (subjVal) {
+      currentSubject = subjVal;
+      currentLocation = '';
+    }
+    
+    if (timeVal) currentTime = timeVal;
+    if (locVal) currentLocation = locVal;
 
     if (!rollField) continue;
 
@@ -391,16 +403,10 @@ function parsePractical(csvText, students, markers = {}) {
 }
 
 /**
- * Queries Gemini AI to detect layout markers from CSV samples.
+ * Queries Groq API (using Llama 3.3 70B) to detect layout markers from CSV samples.
  */
-async function getMarkersWithGemini(mappingCsv, theoryCsv, practicalCsv, apiKey) {
-  if (!apiKey) throw new Error('Gemini API Key is required for AI-Assisted Sync.');
-
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
-    generationConfig: { responseMimeType: 'application/json' }
-  });
+async function getMarkersWithGroq(mappingCsv, theoryCsv, practicalCsv, apiKey) {
+  if (!apiKey) throw new Error('Groq API Key is required for AI-Assisted Sync.');
 
   const getSample = (csvText) => csvText.split(/\r?\n/).slice(0, 15).join('\n');
   const mappingSample = getSample(mappingCsv);
@@ -430,29 +436,59 @@ Identify the correct 0-based column indices and layout patterns to parse them.
 Return a JSON object conforming exactly to this structure:
 {
   "theory": {
-    "headerRow": <number>, // Row index (0-based) where headers are defined (e.g. Date, Subject, Time...)
-    "dateIndex": <number>, // Column index of Date
-    "subjectIndex": <number>, // Column index of Subject
-    "timeIndex": <number>, // Column index of Time Slot
-    "locationIndex": <number>, // Column index of Location/Classroom details
-    "rollIndex": <number> // Column index of Roll Range (e.g. "123 to 145")
+    "headerRow": 2, // Row index (0-based) where headers are defined (e.g. Date, Subject, Time...)
+    "dateIndex": 0, // Column index of Date
+    "subjectIndex": 1, // Column index of Subject
+    "timeIndex": 3, // Column index of Time Slot
+    "locationIndex": 6, // Column index of Location/Classroom details
+    "rollIndex": 4 // Column index of Roll Range (e.g. "123 to 145")
   },
   "practical": {
-    "dayRowIdentifier": "<string>", // The substring that identifies a Date/Day row (e.g., "Day" or "Date")
-    "panelRowIdentifier": "<string>", // The substring identifying the Panel/Slot No row (e.g., "Slot No.")
-    "timeRowIdentifier": "<string>", // The substring identifying the Time/Subject row (e.g., "Time")
-    "venueRowIdentifier": "<string>" // The substring identifying the Venue/Location row (e.g., "Venue")
+    "dayRowIdentifier": "Day", // The substring that identifies a Date/Day row (e.g., "Day" or "Date")
+    "panelRowIdentifier": "Slot No.", // The substring identifying the Panel/Slot No row (e.g., "Slot No.")
+    "timeRowIdentifier": "Time", // The substring identifying the Time/Subject row (e.g., "Time")
+    "venueRowIdentifier": "Venue" // The substring identifying the Venue/Location row (e.g., "Venue")
   }
 }
+
+Respond ONLY with a valid JSON object. Do not include any explanation or markdown formatting outside the JSON.
 `;
 
-  const response = await model.generateContent(prompt);
-  const responseText = response.response.text();
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-specdec',
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.1
+    })
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(`Groq API Error: ${errData.error?.message || response.statusText}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('Groq did not return any completion content.');
+  }
+
   try {
-    return JSON.parse(responseText.trim());
+    return JSON.parse(content.trim());
   } catch (error) {
-    console.error('Failed to parse Gemini JSON response:', responseText);
-    throw new Error('Gemini did not return valid JSON mapping metadata.');
+    console.error('Failed to parse Groq JSON response:', content);
+    throw new Error('Groq did not return valid JSON mapping metadata.');
   }
 }
 
@@ -464,11 +500,11 @@ async function parseCsvData(mappingCsv, theoryCsv, practicalCsv, options = {}) {
 
   if (options.useAi) {
     try {
-      console.log('🤖 AI Sync Enabled: Consulting Gemini to detect schema structure...');
-      markers = await getMarkersWithGemini(mappingCsv, theoryCsv, practicalCsv, options.geminiApiKey);
-      console.log('🤖 Gemini Layout Analysis Results:', JSON.stringify(markers, null, 2));
+      console.log('🤖 AI Sync Enabled: Consulting Groq to detect schema structure...');
+      markers = await getMarkersWithGroq(mappingCsv, theoryCsv, practicalCsv, options.groqApiKey);
+      console.log('🤖 Groq Layout Analysis Results:', JSON.stringify(markers, null, 2));
     } catch (err) {
-      console.warn('⚠️ AI Ingestion warning: Gemini layout analysis failed. Falling back to Heuristics.', err.message);
+      console.warn('⚠️ AI Ingestion warning: Groq layout analysis failed. Falling back to Heuristics.', err.message);
     }
   }
 
