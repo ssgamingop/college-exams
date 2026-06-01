@@ -2,10 +2,10 @@ const fs = require('fs');
 const path = require('path');
 
 // File paths
-const MAPPING_CSV = path.join(__dirname, '../csv_data/Batch25-29__Sem1-Sprint1 - Data.csv');
-const THEORY_CSV = path.join(__dirname, '../csv_data/theory.csv');
-const PRACTICAL_CSV = path.join(__dirname, '../csv_data/panel.csv');
-const OUTPUT_JSON = path.join(__dirname, '../src/data/exam_data.json');
+const MAPPING_CSV = path.normalize(path.join(__dirname, '../csv_data/Batch25-29__Sem1-Sprint1 - Data.csv'));
+const THEORY_CSV = path.normalize(path.join(__dirname, '../csv_data/theory.csv'));
+const PRACTICAL_CSV = path.normalize(path.join(__dirname, '../csv_data/panel.csv'));
+const OUTPUT_JSON = path.normalize(path.join(__dirname, '../src/data/exam_data.json'));
 
 // Helper to parse CSV line
 function parseLine(line) {
@@ -30,7 +30,12 @@ function parseLine(line) {
 
 // Read file helper
 function readFile(filePath) {
-    return fs.readFileSync(filePath, 'utf-8').split(/\r?\n/).filter(line => line.trim() !== '');
+    const normalizedPath = path.normalize(filePath);
+    const allowedBase = path.normalize(path.join(__dirname, '..'));
+    if (!normalizedPath.startsWith(allowedBase)) {
+        throw new Error('Path traversal detected');
+    }
+    return fs.readFileSync(normalizedPath, 'utf-8').split(/\r?\n/).filter(line => line.trim() !== '');
 }
 
 function processData() {
@@ -38,7 +43,7 @@ function processData() {
 
     // 2. Process Mapping (Roll No <-> Name)
     const mappingLines = readFile(MAPPING_CSV);
-    const students = {}; // RollNo -> { name, rollNo, theory: [], practical: [] }
+    const students = new Map(); // RollNo -> { name, rollNo, theory: [], practical: [] }
 
     // Skip header (line 0)
     const headerCols = parseLine(mappingLines[0]);
@@ -53,15 +58,19 @@ function processData() {
         if (cols.length > Math.max(rollColIdx, nameColIdx)) {
             const rollNo = cols[rollColIdx];
             const name = cols[nameColIdx];
-            students[rollNo] = {
-                rollNo,
-                name,
-                theory: [],
-                practical: []
-            };
+            if (rollNo && name) {
+                if (rollNo !== '__proto__' && rollNo !== 'constructor') {
+                    students.set(rollNo, {
+                        rollNo,
+                        name,
+                        theory: [],
+                        practical: []
+                    });
+                }
+            }
         }
     }
-    console.log(`Loaded ${Object.keys(students).length} students.`);
+    console.log(`Loaded ${students.size} students.`);
 
     // 2. Process Theory Schedule (Range based)
     const theoryLines = readFile(THEORY_CSV);
@@ -101,7 +110,7 @@ function processData() {
             if (part.includes(' to ')) {
                 const [startRoll, endRoll] = part.split(' to ').map(r => BigInt(r.trim()));
                 // Assign to students in range
-                Object.values(students).forEach(student => {
+                Array.from(students.values()).forEach(student => {
                     const studentRoll = BigInt(student.rollNo);
                     if (studentRoll >= startRoll && studentRoll <= endRoll) {
                         student.theory.push({
@@ -117,7 +126,7 @@ function processData() {
                 // Single roll number
                 try {
                     const singleRoll = BigInt(part);
-                    Object.values(students).forEach(student => {
+                    Array.from(students.values()).forEach(student => {
                         if (BigInt(student.rollNo) === singleRoll) {
                             student.theory.push({
                                 date: currentTheoryDate,
@@ -140,9 +149,9 @@ function processData() {
     const practicalLines = readFile(PRACTICAL_CSV);
     let currentPracticalDate = '';
 
-    let subjectMap = {}; // colIndex -> { subject, panel, professor }
-    let venueMap = {}; // colIndex -> Venue Name
-    let tempPanels = {};
+    const subjectMap = new Map(); // colIndex -> { subject, panel, professor }
+    const venueMap = new Map(); // colIndex -> Venue Name
+    const tempPanels = new Map();
 
     function parsePanelHeader(header) {
         let subject = '';
@@ -178,9 +187,9 @@ function processData() {
         const dateCell = (row[0] && row[0].includes('Day')) ? row[0] : (row[1] && row[1].includes('Day') ? row[1] : null);
         if (dateCell) {
             currentPracticalDate = dateCell.trim();
-            venueMap = {};
-            subjectMap = {};
-            tempPanels = {};
+            venueMap.clear();
+            subjectMap.clear();
+            tempPanels.clear();
             continue;
         }
 
@@ -188,7 +197,7 @@ function processData() {
         if ((row[0] && row[0].includes('Venue')) || (row[1] && row[1].includes('Venue'))) {
             row.forEach((cell, idx) => {
                 if (cell && cell.includes('Bunker')) {
-                    venueMap[idx] = cell.trim();
+                    venueMap.set(idx, cell.trim());
                 }
             });
             if (!(row[0] && row[0].includes('Slot No.'))) {
@@ -200,7 +209,7 @@ function processData() {
         if (row[0] && row[0].includes('Slot No.')) {
             row.forEach((cell, idx) => {
                 if (idx >= 2 && cell) {
-                    tempPanels[idx] = cell.trim();
+                    tempPanels.set(idx, cell.trim());
                 }
             });
             continue;
@@ -210,12 +219,12 @@ function processData() {
             row.forEach((cell, idx) => {
                 if (idx >= 2 && cell) {
                     const parsed = parsePanelHeader(cell);
-                    const panelName = tempPanels[idx] || 'Unknown';
-                    subjectMap[idx] = {
+                    const panelName = tempPanels.get(idx) || 'Unknown';
+                    subjectMap.set(idx, {
                         subject: parsed.subject,
                         panel: panelName,
                         professor: parsed.professor
-                    };
+                    });
                 }
             });
             continue;
@@ -235,13 +244,13 @@ function processData() {
                 // Normalize name
                 const normalizeName = (name) => name.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
 
-                const student = Object.values(students).find(s =>
+                const student = Array.from(students.values()).find(s =>
                     normalizeName(s.name) === normalizeName(studentName)
                 );
 
                 if (student) {
-                    const headerInfo = subjectMap[j] || { subject: 'Unknown', panel: 'Unknown' };
-                    let baseLocation = venueMap[j] || 'TBD';
+                    const headerInfo = subjectMap.get(j) || { subject: 'Unknown', panel: 'Unknown' };
+                    let baseLocation = venueMap.get(j) || 'TBD';
                     let professor = headerInfo.professor || '';
                     
                     let location = baseLocation;
@@ -265,12 +274,16 @@ function processData() {
     console.log('Processed practical schedule.');
 
     // Write output
-    const outputDir = path.dirname(OUTPUT_JSON);
+    const outputDir = path.normalize(path.dirname(OUTPUT_JSON));
+    const allowedBase = path.normalize(path.join(__dirname, '..'));
+    if (!outputDir.startsWith(allowedBase)) {
+        throw new Error('Path traversal detected');
+    }
     if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    fs.writeFileSync(OUTPUT_JSON, JSON.stringify(Object.values(students), null, 2));
+    fs.writeFileSync(OUTPUT_JSON, JSON.stringify(Array.from(students.values()), null, 2));
     console.log(`Wrote data to ${OUTPUT_JSON}`);
 }
 

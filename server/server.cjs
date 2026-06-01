@@ -53,12 +53,11 @@ app.get('/api/students/search', async (req, res) => {
     const searchQuery = q.trim();
     // Escape regex special characters
     const escapedQuery = searchQuery.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    const regex = new RegExp(escapedQuery, 'i');
 
     const students = await Student.find({
       $or: [
-        { name: regex },
-        { rollNo: regex }
+        { name: { $regex: escapedQuery, $options: 'i' } },
+        { rollNo: { $regex: escapedQuery, $options: 'i' } }
       ]
     }).limit(10); // Return up to 10 suggestions for robustness
 
@@ -103,7 +102,11 @@ app.get('/api/students/count', async (req, res) => {
 // 4. Seed Database endpoint (Optional backup)
 app.post('/api/students/seed', async (req, res) => {
   try {
-    const jsonPath = path.join(__dirname, '../src/data/exam_data.json');
+    const jsonPath = path.normalize(path.join(__dirname, '../src/data/exam_data.json'));
+    const allowedBase = path.normalize(path.join(__dirname, '..'));
+    if (!jsonPath.startsWith(allowedBase)) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
     if (!fs.existsSync(jsonPath)) {
       return res.status(404).json({ error: 'JSON data file not found at src/data/exam_data.json' });
     }
@@ -163,7 +166,7 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
   const mappingLines = getLines(mappingCsvText);
   if (mappingLines.length === 0) throw new Error('Mapping CSV is empty');
 
-  const students = {}; // RollNo -> { name, rollNo, theory: [], practical: [] }
+  const students = new Map(); // RollNo -> { name, rollNo, theory: [], practical: [] }
 
   const headerCols = parseLine(mappingLines[0]);
   let rollColIdx = headerCols.findIndex(c => c.toLowerCase().includes('roll'));
@@ -178,12 +181,14 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
       const rollNo = cols[rollColIdx];
       const name = cols[nameColIdx];
       if (rollNo && name) {
-        students[rollNo] = {
-          rollNo,
-          name,
-          theory: [],
-          practical: []
-        };
+        if (rollNo !== '__proto__' && rollNo !== 'constructor') {
+          students.set(rollNo, {
+            rollNo,
+            name,
+            theory: [],
+            practical: []
+          });
+        }
       }
     }
   }
@@ -220,7 +225,7 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
     parts.forEach(part => {
       if (part.includes(' to ')) {
         const [startRoll, endRoll] = part.split(' to ').map(r => BigInt(r.trim()));
-        Object.values(students).forEach(student => {
+        Array.from(students.values()).forEach(student => {
           try {
             const studentRoll = BigInt(student.rollNo);
             if (studentRoll >= startRoll && studentRoll <= endRoll) {
@@ -239,7 +244,7 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
       } else {
         try {
           const singleRoll = BigInt(part);
-          Object.values(students).forEach(student => {
+          Array.from(students.values()).forEach(student => {
             if (BigInt(student.rollNo) === singleRoll) {
               student.theory.push({
                 date: currentTheoryDate,
@@ -260,9 +265,9 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
   // 3. Process Practical Schedule
   const practicalLines = getLines(practicalCsvText);
   let currentPracticalDate = '';
-  let subjectMap = {};
-  let venueMap = {};
-  let tempPanels = {};
+  const subjectMap = new Map();
+  const venueMap = new Map();
+  const tempPanels = new Map();
 
   function parsePanelHeader(header) {
     let subject = '';
@@ -297,16 +302,16 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
     const dateCell = (row[0] && row[0].includes('Day')) ? row[0] : (row[1] && row[1].includes('Day') ? row[1] : null);
     if (dateCell) {
       currentPracticalDate = dateCell.trim();
-      venueMap = {};
-      subjectMap = {};
-      tempPanels = {};
+      venueMap.clear();
+      subjectMap.clear();
+      tempPanels.clear();
       continue;
     }
 
     if ((row[0] && row[0].includes('Venue')) || (row[1] && row[1].includes('Venue'))) {
       row.forEach((cell, idx) => {
         if (cell && cell.includes('Bunker')) {
-          venueMap[idx] = cell.trim();
+          venueMap.set(idx, cell.trim());
         }
       });
       // Do not continue if it's also the Slot No./Panel header row
@@ -318,7 +323,7 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
     if (row[0] && row[0].includes('Slot No.')) {
       row.forEach((cell, idx) => {
         if (idx >= 2 && cell) {
-          tempPanels[idx] = cell.trim();
+          tempPanels.set(idx, cell.trim());
         }
       });
       continue;
@@ -328,12 +333,12 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
       row.forEach((cell, idx) => {
         if (idx >= 2 && cell) {
           const parsed = parsePanelHeader(cell);
-          const panelName = tempPanels[idx] || 'Unknown';
-          subjectMap[idx] = {
+          const panelName = tempPanels.get(idx) || 'Unknown';
+          subjectMap.set(idx, {
             subject: parsed.subject,
             panel: panelName,
             professor: parsed.professor
-          };
+          });
         }
       });
       continue;
@@ -349,13 +354,13 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
       if (studentName && studentName.length > 2 && studentName !== 'NA') {
         const normalizeName = (name) => name.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
 
-        const student = Object.values(students).find(s =>
+        const student = Array.from(students.values()).find(s =>
           normalizeName(s.name) === normalizeName(studentName)
         );
 
         if (student) {
-          const headerInfo = subjectMap[j] || { subject: 'Unknown', panel: 'Unknown' };
-          let baseLocation = venueMap[j] || 'TBD';
+          const headerInfo = subjectMap.get(j) || { subject: 'Unknown', panel: 'Unknown' };
+          let baseLocation = venueMap.get(j) || 'TBD';
           let professor = headerInfo.professor || '';
           
           let location = baseLocation;
@@ -377,7 +382,7 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
     }
   }
 
-  return Object.values(students);
+  return Array.from(students.values());
 }
 
 // 5. Upload and Parse CSV data dynamically to update the database
