@@ -9,7 +9,7 @@ const ExamSchema = new mongoose.Schema({
   // Practical specific fields
   panel: { type: String },
   professor: { type: String }
-});
+}, { strict: false });
 
 const StudentSchema = new mongoose.Schema({
   rollNo: { 
@@ -25,7 +25,7 @@ const StudentSchema = new mongoose.Schema({
   },
   theory: [ExamSchema],
   practical: [ExamSchema]
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 // Create a compound text index to allow text searches on rollNo and name
 StudentSchema.index({ name: 'text', rollNo: 'text' });

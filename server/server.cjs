@@ -207,262 +207,150 @@ app.post('/api/students/seed', async (req, res) => {
   }
 });
 
-// Helper to parse CSV data in-memory
-function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
-  function parseLine(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
+// Import helper parser utilities
+const { getCsvUrl, fetchCsvText, parseCsvData } = require('./utils/parser.cjs');
 
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          // Handle escaped quotes inside quotes (e.g., "")
-          current += '"';
-          i++; // Skip the next quote
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
+// 5. Verify Admin password to unlock the admin dashboard
+app.post('/api/students/verify-password', adminUploadRateLimiter, async (req, res) => {
+  try {
+    const { password } = req.body;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      return res.status(500).json({ error: 'Server Configuration Error: Admin authorization password is not configured on the server.' });
     }
-    result.push(current.trim());
-    return result.map(field => field.replace(/^"|"$/g, '').trim());
-  }
 
-  // Read lines helper
-  function getLines(text) {
-    return text.split(/\r?\n/).filter(line => line.trim() !== '');
-  }
-
-  const mappingLines = getLines(mappingCsvText);
-  if (mappingLines.length === 0) throw new Error('Mapping CSV is empty');
-
-  const students = new Map(); // RollNo -> { name, rollNo, theory: [], practical: [] }
-
-  const headerCols = parseLine(mappingLines[0]);
-  let rollColIdx = headerCols.findIndex(c => c.toLowerCase().includes('roll'));
-  let nameColIdx = headerCols.findIndex(c => c.toLowerCase().includes('name'));
-
-  if (rollColIdx === -1) rollColIdx = 0;
-  if (nameColIdx === -1) nameColIdx = 1;
-
-  for (let i = 1; i < mappingLines.length; i++) {
-    const cols = parseLine(mappingLines[i]);
-    if (cols.length > Math.max(rollColIdx, nameColIdx)) {
-      const rollNo = cols[rollColIdx];
-      const name = cols[nameColIdx];
-      if (rollNo && name) {
-        if (rollNo !== '__proto__' && rollNo !== 'constructor') {
-          students.set(rollNo, {
-            rollNo,
-            name,
-            theory: [],
-            practical: []
-          });
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (typeof password !== 'string' || password.trim() !== adminPassword) {
+      const now = Date.now();
+      if (!loginAttempts.has(ip)) {
+        loginAttempts.set(ip, { attempts: 1, lockoutResetTime: 0 });
+      } else {
+        const data = loginAttempts.get(ip);
+        data.attempts++;
+        if (data.attempts >= 5) {
+          data.lockoutResetTime = now + 15 * 60 * 1000; // 15 mins lockout
         }
       }
+      
+      const attemptsLeft = loginAttempts.has(ip) ? Math.max(0, 5 - loginAttempts.get(ip).attempts) : 5;
+      return res.status(401).json({ 
+        error: 'Unauthorized: Invalid Admin Password',
+        details: attemptsLeft > 0 ? `Incorrect password. ${attemptsLeft} attempts remaining before lockout.` : 'Too many incorrect attempts. Locked out for 15 minutes.'
+      });
     }
+
+    // Reset attempts on successful authentication
+    loginAttempts.delete(ip);
+    res.json({ success: true, message: 'Authenticated successfully' });
+  } catch (error) {
+    console.error('Error verifying admin password:', error);
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
+});
 
-  // 2. Process Theory Schedule
-  const theoryLines = getLines(theoryCsvText);
-  let currentTheoryDate = '';
-  let currentSubject = '';
-
-  for (let i = 2; i < theoryLines.length; i++) {
-    const cols = parseLine(theoryLines[i]);
-    if (cols.length < 5) continue;
-
-    if (cols[0] && cols[0].toLowerCase().trim() !== 'date') currentTheoryDate = cols[0];
-    if (cols[1] && cols[1].toLowerCase().trim() !== 'subject') currentSubject = cols[1];
-
-    let subject = currentSubject;
-    if (subject === 'Aptitude - I - DILR') {
-      const mode = cols[2] ? cols[2].trim() : '';
-      if (mode.toLowerCase().includes('mcq')) {
-        subject = 'Aptitude - I - DILR (MCQ)';
-      } else {
-        subject = 'Aptitude - I - DILR (Theory)';
+// 6. Get Saved Sync Configuration
+app.get('/api/students/sync-config', async (req, res) => {
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    let config = { mappingUrl: '', theoryUrl: '', practicalUrl: '', useAi: false };
+    if (fs.existsSync(configPath)) {
+      try {
+        const rawData = fs.readFileSync(configPath, 'utf8');
+        config = JSON.parse(rawData);
+      } catch (err) {
+        console.error('Error reading config.json:', err);
       }
     }
-    const timeSlot = cols[3];
-    const rollField = cols[4];
-    const location = cols[6]; // Class Details
+    const hasApiKey = !!process.env.GEMINI_API_KEY;
+    res.json({ ...config, hasApiKey });
+  } catch (error) {
+    console.error('Error reading sync config:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
-    if (!rollField) continue;
+// 7. Sync database directly from Google Sheets (CSV Export format)
+app.post('/api/students/sync-sheets', adminUploadRateLimiter, async (req, res) => {
+  try {
+    const { mappingUrl, theoryUrl, practicalUrl, useAi, geminiApiKey, password } = req.body;
+    
+    // Validate Admin password
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      return res.status(500).json({ error: 'Server Configuration Error: Admin authorization password is not configured.' });
+    }
 
-    const parts = rollField.split(',').map(p => p.trim());
-
-    parts.forEach(part => {
-      if (part.includes(' to ')) {
-        const [startRoll, endRoll] = part.split(' to ').map(r => BigInt(r.trim()));
-        Array.from(students.values()).forEach(student => {
-          try {
-            const studentRoll = BigInt(student.rollNo);
-            if (studentRoll >= startRoll && studentRoll <= endRoll) {
-              student.theory.push({
-                date: currentTheoryDate,
-                subject,
-                time: timeSlot,
-                location: location || 'TBD',
-                type: 'Theory'
-              });
-            }
-          } catch (e) {
-            // Ignore parse errors
-          }
-        });
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (typeof password !== 'string' || password.trim() !== adminPassword) {
+      const now = Date.now();
+      if (!loginAttempts.has(ip)) {
+        loginAttempts.set(ip, { attempts: 1, lockoutResetTime: 0 });
       } else {
-        try {
-          const singleRoll = BigInt(part);
-          Array.from(students.values()).forEach(student => {
-            if (BigInt(student.rollNo) === singleRoll) {
-              student.theory.push({
-                date: currentTheoryDate,
-                subject,
-                time: timeSlot,
-                location: location || 'TBD',
-                type: 'Theory'
-              });
-            }
-          });
-        } catch (e) {
-          // Ignore single roll parse error
+        const data = loginAttempts.get(ip);
+        data.attempts++;
+        if (data.attempts >= 5) {
+          data.lockoutResetTime = now + 15 * 60 * 1000;
         }
       }
+      
+      const attemptsLeft = loginAttempts.has(ip) ? Math.max(0, 5 - loginAttempts.get(ip).attempts) : 5;
+      return res.status(401).json({ 
+        error: 'Unauthorized: Invalid Admin Password',
+        details: attemptsLeft > 0 ? `Incorrect password. ${attemptsLeft} attempts remaining before lockout.` : 'Too many incorrect attempts. Locked out for 15 minutes.'
+      });
+    }
+
+    loginAttempts.delete(ip);
+
+    if (!mappingUrl || !theoryUrl || !practicalUrl) {
+      return res.status(400).json({ error: 'All three Google Sheets URLs are required.' });
+    }
+
+    // Convert to exportable URLs
+    const mappingExport = getCsvUrl(mappingUrl);
+    const theoryExport = getCsvUrl(theoryUrl);
+    const practicalExport = getCsvUrl(practicalUrl);
+
+    console.log('Fetching Google Sheets CSV data...');
+    const [mappingCsv, theoryCsv, practicalCsv] = await Promise.all([
+      fetchCsvText(mappingExport),
+      fetchCsvText(theoryExport),
+      fetchCsvText(practicalExport)
+    ]);
+
+    // Use environment variable key if not passed from UI
+    const finalApiKey = geminiApiKey || process.env.GEMINI_API_KEY;
+
+    // Parse the fetched CSV content
+    const studentsData = await parseCsvData(mappingCsv, theoryCsv, practicalCsv, {
+      useAi: !!useAi,
+      geminiApiKey: finalApiKey
     });
+
+    if (!studentsData || studentsData.length === 0) {
+      return res.status(400).json({ error: 'Parsed student records list is empty. Check your sheets layout.' });
+    }
+
+    // Update MongoDB
+    await Student.deleteMany({});
+    const inserted = await Student.insertMany(studentsData);
+
+    // Save sync config locally
+    const configPath = path.join(__dirname, 'config.json');
+    fs.writeFileSync(configPath, JSON.stringify({ mappingUrl, theoryUrl, practicalUrl, useAi: !!useAi }, null, 2));
+
+    res.json({
+      success: true,
+      message: `Database successfully synced with ${inserted.length} students from Google Sheets!`,
+      count: inserted.length
+    });
+  } catch (error) {
+    console.error('Error syncing Google Sheets:', error);
+    res.status(500).json({ error: 'Sync failed', details: error.message });
   }
+});
 
-  // 3. Process Practical Schedule
-  const practicalLines = getLines(practicalCsvText);
-  let currentPracticalDate = '';
-  const subjectMap = new Map();
-  const venueMap = new Map();
-  const tempPanels = new Map();
-
-  function parsePanelHeader(header) {
-    let subject = '';
-    let professor = '';
-    let panel = '';
-
-    const cleanHeader = header.replace(/\s+/g, ' ').trim();
-    const match = cleanHeader.match(/^(Panel\s*\d+|Batch\s*\d+)(?:\s*\((.*?)\))?\s*-\s*(.*)$/i);
-    if (match) {
-      panel = match[1].trim();
-      professor = match[2] ? match[2].trim() : '';
-      subject = match[3] ? match[3].trim() : '';
-    } else {
-      const parts = cleanHeader.split(' - ');
-      if (parts.length > 1) {
-        subject = parts.slice(1).join(' - ').trim();
-        panel = parts[0].trim();
-      } else {
-        subject = cleanHeader;
-        panel = 'Unknown';
-      }
-    }
-
-    return { subject, panel, professor };
-  }
-
-  for (let i = 0; i < practicalLines.length; i++) {
-    const line = practicalLines[i];
-    const row = parseLine(line);
-    if (!row || row.length === 0) continue;
-
-    const dateCell = (row[0] && row[0].includes('Day')) ? row[0] : (row[1] && row[1].includes('Day') ? row[1] : null);
-    if (dateCell) {
-      currentPracticalDate = dateCell.trim();
-      venueMap.clear();
-      subjectMap.clear();
-      tempPanels.clear();
-      continue;
-    }
-
-    if ((row[0] && row[0].includes('Venue')) || (row[1] && row[1].includes('Venue'))) {
-      row.forEach((cell, idx) => {
-        if (cell && cell.includes('Bunker')) {
-          venueMap.set(idx, cell.trim());
-        }
-      });
-      // Do not continue if it's also the Slot No./Panel header row
-      if (!(row[0] && row[0].includes('Slot No.'))) {
-        continue;
-      }
-    }
-
-    if (row[0] && row[0].includes('Slot No.')) {
-      row.forEach((cell, idx) => {
-        if (idx >= 2 && cell) {
-          tempPanels.set(idx, cell.trim());
-        }
-      });
-      continue;
-    }
-
-    if (row[1] && row[1].includes('Time')) {
-      row.forEach((cell, idx) => {
-        if (idx >= 2 && cell) {
-          const parsed = parsePanelHeader(cell);
-          const panelName = tempPanels.get(idx) || 'Unknown';
-          subjectMap.set(idx, {
-            subject: parsed.subject,
-            panel: panelName,
-            professor: parsed.professor
-          });
-        }
-      });
-      continue;
-    }
-
-    if (!currentPracticalDate) continue;
-
-    const time = row[1];
-    if (!time || !time.includes('M')) continue;
-
-    for (let j = 2; j < row.length; j++) {
-      const studentName = row[j];
-      if (studentName && studentName.length > 2 && studentName !== 'NA') {
-        const normalizeName = (name) => name.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
-
-        const student = Array.from(students.values()).find(s =>
-          normalizeName(s.name) === normalizeName(studentName)
-        );
-
-        if (student) {
-          const headerInfo = subjectMap.get(j) || { subject: 'Unknown', panel: 'Unknown' };
-          let baseLocation = venueMap.get(j) || 'TBD';
-          let professor = headerInfo.professor || '';
-          
-          let location = baseLocation;
-          if (professor) {
-            location = `${baseLocation} (${professor})`;
-          }
-
-          student.practical.push({
-            date: currentPracticalDate,
-            subject: headerInfo.subject,
-            panel: headerInfo.panel,
-            time: time.trim(),
-            location: location,
-            type: 'Practical',
-            professor: professor
-          });
-        }
-      }
-    }
-  }
-
-  return Array.from(students.values());
-}
-
-// 5. Upload and Parse CSV data dynamically to update the database
+// 8. Upload and Parse CSV data dynamically to update the database (Manual File Ingestion)
 app.post('/api/students/upload-csv', adminUploadRateLimiter, async (req, res) => {
   try {
     const { mappingCsv, theoryCsv, practicalCsv, password } = req.body;
@@ -500,7 +388,7 @@ app.post('/api/students/upload-csv', adminUploadRateLimiter, async (req, res) =>
       return res.status(400).json({ error: 'All three CSV contents (mappingCsv, theoryCsv, and practicalCsv) are required.' });
     }
 
-    const studentsData = processCsvData(mappingCsv, theoryCsv, practicalCsv);
+    const studentsData = await parseCsvData(mappingCsv, theoryCsv, practicalCsv, { useAi: false });
     if (!studentsData || studentsData.length === 0) {
       return res.status(400).json({ error: 'Failed to parse any student schedule records from the provided CSV files.' });
     }

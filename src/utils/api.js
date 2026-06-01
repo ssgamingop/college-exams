@@ -92,3 +92,49 @@ export async function getStudentCount() {
     return 0;
   }
 }
+
+/**
+ * Verifies the admin authorization password.
+ * @param {string} password - Admin authorization password
+ * @returns {Promise<Object>} - Success result
+ */
+export async function verifyPassword(password) {
+  const response = await fetch(`${API_BASE}/api/students/verify-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Password verification failed');
+  }
+  return data;
+}
+
+/**
+ * Gets the current Google Sheets sync configuration from the server.
+ * @returns {Promise<Object>} - Config object with mappingUrl, theoryUrl, practicalUrl, useAi, hasApiKey
+ */
+export async function getSyncConfig() {
+  const response = await fetch(`${API_BASE}/api/students/sync-config`);
+  if (!response.ok) {
+    throw new Error('Failed to load sync configuration');
+  }
+  return await response.json();
+}
+
+/**
+ * Syncs the database with student schedules from Google Sheets.
+ */
+export async function syncGoogleSheets(mappingUrl, theoryUrl, practicalUrl, useAi, geminiApiKey, password) {
+  const response = await fetch(`${API_BASE}/api/students/sync-sheets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mappingUrl, theoryUrl, practicalUrl, useAi, geminiApiKey, password })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to sync Google Sheets');
+  }
+  return data;
+}

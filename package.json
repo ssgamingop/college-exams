@@ -13,6 +13,7 @@
     "db:seed": "node server/seed.cjs"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@vercel/analytics": "^2.0.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

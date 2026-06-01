@@ -9,6 +9,11 @@ const item = {
     show: { opacity: 1, x: 0 }
 };
 
+const formatKeyName = (key) => {
+    const result = key.replace(/([A-Z])/g, " $1");
+    return result.charAt(0).toUpperCase() + result.slice(1);
+};
+
 const ExamItem = ({ exam, type }) => {
     const isTheory = type === 'theory';
     const accentColor = isTheory ? 'text-purple-600 dark:text-purple-400' : 'text-cyan-600 dark:text-cyan-400';
@@ -17,6 +22,9 @@ const ExamItem = ({ exam, type }) => {
     const badgeBg = isTheory
         ? 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-400/10 dark:text-purple-300 dark:border-purple-400/20'
         : 'bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-400/10 dark:text-cyan-300 dark:border-cyan-400/20';
+
+    const standardFields = ['date', 'subject', 'time', 'location', 'type', 'panel', 'professor', '_id', '__v'];
+    const extraFields = Object.keys(exam).filter(key => !standardFields.includes(key) && exam[key]);
 
     return (
         <motion.div
@@ -53,6 +61,13 @@ const ExamItem = ({ exam, type }) => {
                                 </span>
                             </div>
                         )}
+                        {/* Render extra dynamic columns */}
+                        {extraFields.map(key => (
+                            <div key={key} className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${badgeBg} opacity-85`}>
+                                <span className="text-slate-400 dark:text-slate-500 font-normal">{formatKeyName(key)}:</span>
+                                <span>{exam[key]}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
