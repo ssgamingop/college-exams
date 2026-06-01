@@ -70,7 +70,6 @@ const ExamItem = ({ exam, type }) => {
             </div>
         </motion.div>
     );
-
 };
 
 const ScheduleCard = ({ student }) => {

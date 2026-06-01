@@ -76,3 +76,19 @@ export async function uploadAndSyncCsv(mappingCsv, theoryCsv, practicalCsv, pass
     throw error;
   }
 }
+
+/**
+ * Gets the total number of students in the database.
+ * @returns {Promise<number>} - Count of students
+ */
+export async function getStudentCount() {
+  try {
+    const response = await fetch(`${API_BASE}/api/students/count`);
+    if (!response.ok) return 0;
+    const data = await response.json();
+    return data.count || 0;
+  } catch (error) {
+    console.error('🔴 API Backend Error (getStudentCount):', error.message || error);
+    return 0;
+  }
+}

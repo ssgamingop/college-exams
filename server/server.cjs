@@ -200,7 +200,15 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
     if (cols[0] && cols[0].toLowerCase().trim() !== 'date') currentTheoryDate = cols[0];
     if (cols[1] && cols[1].toLowerCase().trim() !== 'subject') currentSubject = cols[1];
 
-    const subject = currentSubject;
+    let subject = currentSubject;
+    if (subject === 'Aptitude - I - DILR') {
+      const mode = cols[2] ? cols[2].trim() : '';
+      if (mode.toLowerCase().includes('mcq')) {
+        subject = 'Aptitude - I - DILR (MCQ)';
+      } else {
+        subject = 'Aptitude - I - DILR (Theory)';
+      }
+    }
     const timeSlot = cols[3];
     const rollField = cols[4];
     const location = cols[6]; // Class Details

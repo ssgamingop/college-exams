@@ -29,7 +29,7 @@ export const generateICS = (student) => {
             console.error("Unknown date format:", dateStr);
             return null;
         }
-
+        
         // Parse Time "10:00 AM –10:30 AM" or "10:00 AM – 12:00 PM"
         // Normalize en-dash, em-dash to hyphen
         const normalizedTimeStr = timeStr.replace(/[–—]/g, '-');
