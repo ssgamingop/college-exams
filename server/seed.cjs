@@ -8,7 +8,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 
 const Student = require('./models/Student.cjs');
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/exam_scheduler';
-const JSON_DATA_PATH = path.join(__dirname, '../src/data/exam_data.json');
+const JSON_DATA_PATH = path.normalize(path.join(__dirname, '../src/data/exam_data.json'));
 
 async function seedDatabase() {
   console.log('Starting MongoDB seeding process...');

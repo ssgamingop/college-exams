@@ -15,11 +15,88 @@ const PORT = process.env.PORT || 5001;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/exam_scheduler';
 
 // Middleware
+// Security Headers Middleware
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
+  next();
+});
+
+// Configure CORS (Allow all origins for public API since there are no session cookies)
 app.use(cors({
-  origin: '*', // Allow all origins for the public API (Upload is password-protected)
-  credentials: true
+  origin: '*',
+  credentials: false
 }));
 app.use(express.json({ limit: '10mb' }));
+
+// Simple In-Memory Rate Limiter to prevent API abuse
+const rateLimitWindowMs = 15 * 60 * 1000; // 15 minutes
+const rateLimitMaxRequests = 150; // Max 150 requests per IP per window
+const ipRequestCounts = new Map();
+
+// Periodic cleanup of expired rate limits
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, data] of ipRequestCounts.entries()) {
+    if (now > data.resetTime) {
+      ipRequestCounts.delete(ip);
+    }
+  }
+}, rateLimitWindowMs);
+
+const apiRateLimiter = (req, res, next) => {
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const now = Date.now();
+  
+  if (!ipRequestCounts.has(ip)) {
+    ipRequestCounts.set(ip, {
+      count: 1,
+      resetTime: now + rateLimitWindowMs
+    });
+    return next();
+  }
+  
+  const limitData = ipRequestCounts.get(ip);
+  if (now > limitData.resetTime) {
+    limitData.count = 1;
+    limitData.resetTime = now + rateLimitWindowMs;
+    return next();
+  }
+  
+  limitData.count++;
+  if (limitData.count > rateLimitMaxRequests) {
+    return res.status(429).json({ 
+      error: 'Too Many Requests', 
+      details: 'You have exceeded the request limit. Please try again after 15 minutes.' 
+    });
+  }
+  next();
+};
+
+// Brute-Force Protection for Admin CSV Upload password attempts
+const loginAttempts = new Map();
+const adminUploadRateLimiter = (req, res, next) => {
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const now = Date.now();
+  
+  if (loginAttempts.has(ip)) {
+    const data = loginAttempts.get(ip);
+    if (now < data.lockoutResetTime) {
+      const remainingTime = Math.ceil((data.lockoutResetTime - now) / 1000);
+      return res.status(429).json({
+        error: 'Too Many Password Attempts',
+        details: `This IP has been temporarily locked out due to excessive password attempts. Please try again in ${remainingTime} seconds.`
+      });
+    } else if (now >= data.lockoutResetTime && data.attempts >= 5) {
+      loginAttempts.delete(ip);
+    }
+  }
+  next();
+};
+
+app.use('/api/', apiRateLimiter);
 
 // Serverless-Safe Mongoose Connection Middleware
 const connectDB = async (req, res, next) => {
@@ -46,7 +123,7 @@ app.use(connectDB);
 app.get('/api/students/search', async (req, res) => {
   try {
     const { q } = req.query;
-    if (!q || q.trim().length < 2) {
+    if (!q || typeof q !== 'string' || q.trim().length < 2) {
       return res.json([]);
     }
 
@@ -72,11 +149,11 @@ app.get('/api/students/search', async (req, res) => {
 app.get('/api/students/roll/:rollNo', async (req, res) => {
   try {
     const { rollNo } = req.params;
-    if (!rollNo) {
-      return res.status(400).json({ error: 'Roll number is required' });
+    if (!rollNo || typeof rollNo !== 'string') {
+      return res.status(400).json({ error: 'Roll number must be a valid string' });
     }
 
-    const student = await Student.findOne({ rollNo });
+    const student = await Student.findOne({ rollNo: String(rollNo) });
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
@@ -386,7 +463,7 @@ function processCsvData(mappingCsvText, theoryCsvText, practicalCsvText) {
 }
 
 // 5. Upload and Parse CSV data dynamically to update the database
-app.post('/api/students/upload-csv', async (req, res) => {
+app.post('/api/students/upload-csv', adminUploadRateLimiter, async (req, res) => {
   try {
     const { mappingCsv, theoryCsv, practicalCsv, password } = req.body;
     
@@ -395,9 +472,29 @@ app.post('/api/students/upload-csv', async (req, res) => {
     if (!adminPassword) {
       return res.status(500).json({ error: 'Server Configuration Error: Admin authorization password is not configured on the server.' });
     }
+
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     if (typeof password !== 'string' || password.trim() !== adminPassword) {
-      return res.status(401).json({ error: 'Unauthorized: Invalid Admin Password' });
+      const now = Date.now();
+      if (!loginAttempts.has(ip)) {
+        loginAttempts.set(ip, { attempts: 1, lockoutResetTime: 0 });
+      } else {
+        const data = loginAttempts.get(ip);
+        data.attempts++;
+        if (data.attempts >= 5) {
+          data.lockoutResetTime = now + 15 * 60 * 1000; // 15 mins lockout
+        }
+      }
+      
+      const attemptsLeft = loginAttempts.has(ip) ? Math.max(0, 5 - loginAttempts.get(ip).attempts) : 5;
+      return res.status(401).json({ 
+        error: 'Unauthorized: Invalid Admin Password',
+        details: attemptsLeft > 0 ? `Incorrect password. ${attemptsLeft} attempts remaining before lockout.` : 'Too many incorrect attempts. Locked out for 15 minutes.'
+      });
     }
+
+    // Reset attempts on successful upload
+    loginAttempts.delete(ip);
 
     if (!mappingCsv || !theoryCsv || !practicalCsv) {
       return res.status(400).json({ error: 'All three CSV contents (mappingCsv, theoryCsv, and practicalCsv) are required.' });
