@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Github, Instagram, Sun, Moon, Database } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 import Search from './components/Search';
 import ScheduleCard from './components/ScheduleCard';
 import AdminModal from './components/AdminModal';
@@ -136,6 +137,7 @@ function App() {
           setSelectedStudent(null);
         }}
       />
+      <Analytics />
     </div >
   );
 }
