@@ -252,11 +252,31 @@ app.post('/api/students/verify-password', adminUploadRateLimiter, async (req, re
 app.get('/api/students/sync-config', async (req, res) => {
   try {
     const configPath = path.join(__dirname, 'config.json');
-    let config = { mappingUrl: '', theoryUrl: '', practicalUrl: '', useAi: false };
+    let config = {
+      batches: {
+        '2023-27': { mappingUrl: '', theoryUrl: '', practicalUrl: '' },
+        '2024-28': { mappingUrl: '', theoryUrl: '', practicalUrl: '' },
+        '2025-29': { mappingUrl: '', theoryUrl: '', practicalUrl: '' }
+      },
+      useAi: false
+    };
+
     if (fs.existsSync(configPath)) {
       try {
         const rawData = fs.readFileSync(configPath, 'utf8');
-        config = JSON.parse(rawData);
+        const parsed = JSON.parse(rawData);
+        
+        // Migrate old format if necessary
+        if (parsed.mappingUrl !== undefined && !parsed.batches) {
+          config.batches['2025-29'] = {
+            mappingUrl: parsed.mappingUrl || '',
+            theoryUrl: parsed.theoryUrl || '',
+            practicalUrl: parsed.practicalUrl || ''
+          };
+          config.useAi = !!parsed.useAi;
+        } else {
+          config = { ...config, ...parsed };
+        }
       } catch (err) {
         console.error('Error reading config.json:', err);
       }
@@ -269,11 +289,15 @@ app.get('/api/students/sync-config', async (req, res) => {
   }
 });
 
-// 7. Sync database directly from Google Sheets (CSV Export format)
+// 7. Sync database directly from Google Sheets (CSV Export format) for a specific batch
 app.post('/api/students/sync-sheets', adminUploadRateLimiter, async (req, res) => {
   try {
-    const { mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey, password } = req.body;
+    const { batch, mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey, password } = req.body;
     
+    if (!batch) {
+      return res.status(400).json({ error: 'Batch identifier is required.' });
+    }
+
     // Validate Admin password
     const adminPassword = process.env.ADMIN_PASSWORD;
     if (!adminPassword) {
@@ -302,18 +326,18 @@ app.post('/api/students/sync-sheets', adminUploadRateLimiter, async (req, res) =
 
     loginAttempts.delete(ip);
 
-    if (!mappingUrl || !theoryUrl || !practicalUrl) {
-      return res.status(400).json({ error: 'All three Google Sheets URLs are required.' });
+    if (!theoryUrl || !practicalUrl) {
+      return res.status(400).json({ error: 'Theory and Practical Google Sheets URLs are required.' });
     }
 
     // Convert to exportable URLs
-    const mappingExport = getCsvUrl(mappingUrl);
+    const mappingExport = mappingUrl ? getCsvUrl(mappingUrl) : '';
     const theoryExport = getCsvUrl(theoryUrl);
     const practicalExport = getCsvUrl(practicalUrl);
 
-    console.log('Fetching Google Sheets CSV data...');
+    console.log(`Fetching Google Sheets CSV data for batch ${batch}...`);
     const [mappingCsv, theoryCsv, practicalCsv] = await Promise.all([
-      fetchCsvText(mappingExport),
+      mappingExport ? fetchCsvText(mappingExport) : Promise.resolve(''),
       fetchCsvText(theoryExport),
       fetchCsvText(practicalExport)
     ]);
@@ -323,6 +347,7 @@ app.post('/api/students/sync-sheets', adminUploadRateLimiter, async (req, res) =
 
     // Parse the fetched CSV content
     const studentsData = await parseCsvData(mappingCsv, theoryCsv, practicalCsv, {
+      batch,
       useAi: !!useAi,
       groqApiKey: finalApiKey
     });
@@ -331,17 +356,46 @@ app.post('/api/students/sync-sheets', adminUploadRateLimiter, async (req, res) =
       return res.status(400).json({ error: 'Parsed student records list is empty. Check your sheets layout.' });
     }
 
-    // Update MongoDB
-    await Student.deleteMany({});
+    // Update MongoDB: delete only this batch's students, and insert new ones
+    await Student.deleteMany({ batch });
     const inserted = await Student.insertMany(studentsData);
 
     // Save sync config locally
     const configPath = path.join(__dirname, 'config.json');
-    fs.writeFileSync(configPath, JSON.stringify({ mappingUrl, theoryUrl, practicalUrl, useAi: !!useAi }, null, 2));
+    let currentConfig = {
+      batches: {
+        '2023-27': { mappingUrl: '', theoryUrl: '', practicalUrl: '' },
+        '2024-28': { mappingUrl: '', theoryUrl: '', practicalUrl: '' },
+        '2025-29': { mappingUrl: '', theoryUrl: '', practicalUrl: '' }
+      },
+      useAi: false
+    };
+
+    if (fs.existsSync(configPath)) {
+      try {
+        const rawData = fs.readFileSync(configPath, 'utf8');
+        const parsed = JSON.parse(rawData);
+        if (parsed.mappingUrl !== undefined && !parsed.batches) {
+          currentConfig.batches['2025-29'] = {
+            mappingUrl: parsed.mappingUrl || '',
+            theoryUrl: parsed.theoryUrl || '',
+            practicalUrl: parsed.practicalUrl || ''
+          };
+          currentConfig.useAi = !!parsed.useAi;
+        } else {
+          currentConfig = { ...currentConfig, ...parsed };
+        }
+      } catch (err) {}
+    }
+
+    // Update current batch config
+    currentConfig.batches[batch] = { mappingUrl, theoryUrl, practicalUrl };
+    currentConfig.useAi = !!useAi;
+    fs.writeFileSync(configPath, JSON.stringify(currentConfig, null, 2));
 
     res.json({
       success: true,
-      message: `Database successfully synced with ${inserted.length} students from Google Sheets!`,
+      message: `Database successfully synced with ${inserted.length} students from Google Sheets for batch ${batch}!`,
       count: inserted.length
     });
   } catch (error) {
@@ -350,11 +404,15 @@ app.post('/api/students/sync-sheets', adminUploadRateLimiter, async (req, res) =
   }
 });
 
-// 8. Upload and Parse CSV data dynamically to update the database (Manual File Ingestion)
+// 8. Upload and Parse CSV data dynamically to update a specific batch in the database (Manual File Ingestion)
 app.post('/api/students/upload-csv', adminUploadRateLimiter, async (req, res) => {
   try {
-    const { mappingCsv, theoryCsv, practicalCsv, password } = req.body;
+    const { batch, mappingCsv, theoryCsv, practicalCsv, password } = req.body;
     
+    if (!batch) {
+      return res.status(400).json({ error: 'Batch identifier is required.' });
+    }
+
     // Authenticate Admin Password
     const adminPassword = process.env.ADMIN_PASSWORD;
     if (!adminPassword) {
@@ -384,22 +442,22 @@ app.post('/api/students/upload-csv', adminUploadRateLimiter, async (req, res) =>
     // Reset attempts on successful upload
     loginAttempts.delete(ip);
 
-    if (!mappingCsv || !theoryCsv || !practicalCsv) {
-      return res.status(400).json({ error: 'All three CSV contents (mappingCsv, theoryCsv, and practicalCsv) are required.' });
+    if (!theoryCsv || !practicalCsv) {
+      return res.status(400).json({ error: 'Theory and Practical CSV contents are required.' });
     }
 
-    const studentsData = await parseCsvData(mappingCsv, theoryCsv, practicalCsv, { useAi: false });
+    const studentsData = await parseCsvData(mappingCsv || '', theoryCsv, practicalCsv, { batch, useAi: false });
     if (!studentsData || studentsData.length === 0) {
       return res.status(400).json({ error: 'Failed to parse any student schedule records from the provided CSV files.' });
     }
 
-    // Wipe and seed database
-    await Student.deleteMany({});
+    // Wipe only this batch and seed new records
+    await Student.deleteMany({ batch });
     const inserted = await Student.insertMany(studentsData);
 
     res.json({
       success: true,
-      message: `Database successfully updated with ${inserted.length} students from the uploaded CSV files.`,
+      message: `Database successfully updated with ${inserted.length} students from the uploaded CSV files for batch ${batch}.`,
       count: inserted.length
     });
   } catch (error) {

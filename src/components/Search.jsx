@@ -40,7 +40,7 @@ const Search = ({ onSelectStudent }) => {
 
     return (
         <div className="relative w-full max-w-lg mx-auto z-50">
-            <div className={`relative flex items-center bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/60 dark:border-white/10 rounded-2xl overflow-hidden transition-all duration-300 shadow-sm ${isFocused ? 'ring-2 ring-cyan-500/30 border-cyan-500/50 shadow-cyan-500/10' : 'hover:border-slate-300 dark:hover:border-white/20'}`}>
+            <div className={`relative flex items-center bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 rounded-2xl overflow-hidden transition-all duration-300 shadow-sm ${isFocused ? 'ring-2 ring-cyan-500/20 border-cyan-500/50 shadow-cyan-500/10' : 'hover:border-slate-300 dark:hover:border-white/20'}`}>
                 {isLoading ? (
                     <Loader2 className="w-5 h-5 text-cyan-500 ml-4 animate-spin" />
                 ) : (
@@ -75,7 +75,7 @@ const Search = ({ onSelectStudent }) => {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full left-0 right-0 mt-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto z-50"
+                        className="absolute top-full left-0 right-0 mt-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto z-50"
                     >
                         {suggestions.map((student) => (
                             <div
@@ -83,7 +83,14 @@ const Search = ({ onSelectStudent }) => {
                                 onClick={() => handleSelect(student)}
                                 className="px-5 py-3.5 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 cursor-pointer transition-colors border-b border-slate-200/50 dark:border-white/5 last:border-none group"
                             >
-                                <div className="text-slate-700 dark:text-slate-200 font-bold group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{student.name}</div>
+                                <div className="flex justify-between items-center gap-2">
+                                    <div className="text-slate-700 dark:text-slate-200 font-bold group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors truncate">{student.name}</div>
+                                    {student.batch && (
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-200 border border-cyan-200 dark:border-cyan-800/50 flex-shrink-0">
+                                            {student.batch}
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="text-xs text-slate-500 font-mono tracking-wide">{student.rollNo}</div>
                             </div>
                         ))}

@@ -9,22 +9,24 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState('sheets'); // 'sheets' | 'manual'
   
-  // Google Sheets states
+  const [selectedBatch, setSelectedBatch] = useState('2025-29');
+  
+  // Google Sheets states per batch
   const [sheetUrls, setSheetUrls] = useState({
-    mapping: '',
-    theory: '',
-    practical: ''
+    '2023-27': { mapping: '', theory: '', practical: '' },
+    '2024-28': { mapping: '', theory: '', practical: '' },
+    '2025-29': { mapping: '', theory: '', practical: '' }
   });
   const [useAi, setUseAi] = useState(false);
   const [groqApiKey, setGroqApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [hasServerApiKey, setHasServerApiKey] = useState(false);
 
-  // Manual file upload states
+  // Manual file upload states per batch
   const [files, setFiles] = useState({
-    mapping: null,
-    theory: null,
-    practical: null
+    '2023-27': { mapping: null, theory: null, practical: null },
+    '2024-28': { mapping: null, theory: null, practical: null },
+    '2025-29': { mapping: null, theory: null, practical: null }
   });
 
   const [status, setStatus] = useState('idle'); // idle | loading | success | error
@@ -86,11 +88,35 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
   const loadConfig = async () => {
     try {
       const config = await getSyncConfig();
-      setSheetUrls({
-        mapping: config.mappingUrl || '',
-        theory: config.theoryUrl || '',
-        practical: config.practicalUrl || ''
-      });
+      if (config.batches) {
+        setSheetUrls({
+          '2023-27': {
+            mapping: config.batches['2023-27']?.mappingUrl || '',
+            theory: config.batches['2023-27']?.theoryUrl || '',
+            practical: config.batches['2023-27']?.practicalUrl || ''
+          },
+          '2024-28': {
+            mapping: config.batches['2024-28']?.mappingUrl || '',
+            theory: config.batches['2024-28']?.theoryUrl || '',
+            practical: config.batches['2024-28']?.practicalUrl || ''
+          },
+          '2025-29': {
+            mapping: config.batches['2025-29']?.mappingUrl || '',
+            theory: config.batches['2025-29']?.theoryUrl || '',
+            practical: config.batches['2025-29']?.practicalUrl || ''
+          }
+        });
+      } else {
+        // Migration fallback
+        setSheetUrls(prev => ({
+          ...prev,
+          '2025-29': {
+            mapping: config.mappingUrl || '',
+            theory: config.theoryUrl || '',
+            practical: config.practicalUrl || ''
+          }
+        }));
+      }
       setUseAi(!!config.useAi);
       setHasServerApiKey(!!config.hasApiKey);
       
@@ -112,7 +138,13 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
       setErrorMsg(`File ${file.name} exceeds the 5MB limit.`);
       return;
     }
-    setFiles(prev => ({ ...prev, [type]: file }));
+    setFiles(prev => ({
+      ...prev,
+      [selectedBatch]: {
+        ...prev[selectedBatch],
+        [type]: file
+      }
+    }));
     setErrorMsg('');
   };
 
@@ -127,23 +159,24 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
 
   const handleManualSubmit = async (e) => {
     e.preventDefault();
-    if (!files.mapping || !files.theory || !files.practical) {
-      setErrorMsg('Please select all three CSV files.');
+    const batchFiles = files[selectedBatch];
+    if (!batchFiles.theory || !batchFiles.practical) {
+      setErrorMsg('Please select at least Theory and Practical CSV files.');
       return;
     }
 
     try {
       setStatus('loading');
-      setStatusMsg('Ingesting files and database records...');
+      setStatusMsg(`Ingesting files for Batch ${selectedBatch}...`);
       setErrorMsg('');
 
       const [mappingText, theoryText, practicalText] = await Promise.all([
-        readFileText(files.mapping),
-        readFileText(files.theory),
-        readFileText(files.practical)
+        batchFiles.mapping ? readFileText(batchFiles.mapping) : Promise.resolve(''),
+        readFileText(batchFiles.theory),
+        readFileText(batchFiles.practical)
       ]);
 
-      const result = await uploadAndSyncCsv(mappingText, theoryText, practicalText, password);
+      const result = await uploadAndSyncCsv(selectedBatch, mappingText, theoryText, practicalText, password);
       setSeededCount(result.count);
       setStatus('success');
       if (onSyncSuccess) onSyncSuccess();
@@ -156,14 +189,15 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
 
   const handleSheetsSubmit = async (e) => {
     e.preventDefault();
-    if (!sheetUrls.mapping || !sheetUrls.theory || !sheetUrls.practical) {
-      setErrorMsg('Please enter Google Sheet URLs for all three categories.');
+    const batchUrls = sheetUrls[selectedBatch];
+    if (!batchUrls.theory || !batchUrls.practical) {
+      setErrorMsg('Please enter Google Sheet URLs for at least Theory and Practical schedules.');
       return;
     }
 
     try {
       setStatus('loading');
-      setStatusMsg(useAi ? 'AI-Assisted parsing & syncing... (Consulting Groq)' : 'Downloading & processing Google Sheets data...');
+      setStatusMsg(useAi ? `AI-Assisted parsing & syncing for Batch ${selectedBatch}... (Consulting Groq)` : `Syncing Google Sheets for Batch ${selectedBatch}...`);
       setErrorMsg('');
 
       // Save API key locally if user entered one
@@ -174,9 +208,10 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
       }
 
       const result = await syncGoogleSheets(
-        sheetUrls.mapping,
-        sheetUrls.theory,
-        sheetUrls.practical,
+        selectedBatch,
+        batchUrls.mapping,
+        batchUrls.theory,
+        batchUrls.practical,
         useAi,
         groqApiKey.trim() || null,
         password
@@ -200,7 +235,10 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
   };
 
   const handleReset = () => {
-    setFiles({ mapping: null, theory: null, practical: null });
+    setFiles(prev => ({
+      ...prev,
+      [selectedBatch]: { mapping: null, theory: null, practical: null }
+    }));
     setStatus('idle');
     setErrorMsg('');
   };
@@ -213,7 +251,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
   };
 
   const renderFileInput = (type, label, description) => {
-    const isSelected = !!files[type];
+    const isSelected = !!files[selectedBatch]?.[type];
     return (
       <div 
         onClick={() => fileInputRefs[type].current.click()}
@@ -403,7 +441,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
                     exit={{ opacity: 0 }}
                   >
                     {/* Navigation Tabs */}
-                    <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-white/5">
+                    <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200/50 dark:border-white/5">
                       <button
                         type="button"
                         onClick={() => { setActiveTab('sheets'); setErrorMsg(''); }}
@@ -430,19 +468,42 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
                       </button>
                     </div>
 
+                    {/* Batch Sub-navigation Tabs */}
+                    <div className="flex bg-slate-100/50 dark:bg-slate-900/30 p-1 rounded-xl border border-slate-200/30 dark:border-white/5 items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider pl-2.5">Target Batch:</span>
+                      <div className="flex gap-1">
+                        {['2023-27', '2024-28', '2025-29'].map((batch) => (
+                          <button
+                            key={batch}
+                            type="button"
+                            onClick={() => { setSelectedBatch(batch); setErrorMsg(''); }}
+                            className={`px-3 py-1 text-[11px] font-extrabold rounded-lg transition-all ${
+                              selectedBatch === batch
+                                ? 'bg-cyan-500 text-slate-950 shadow-sm font-extrabold'
+                                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                          >
+                            {batch}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* Tab Panels */}
                     {activeTab === 'sheets' ? (
                       /* GOOGLE SHEETS FORM */
                       <form onSubmit={handleSheetsSubmit} className="space-y-4">
                         <div className="space-y-3">
                           <div className="flex flex-col gap-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Mapping Sheet URL</label>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Mapping Sheet URL (Optional for 23/24 batches)</label>
                             <input
                               type="url"
-                              required
                               placeholder="https://docs.google.com/spreadsheets/d/...edit#gid=0"
-                              value={sheetUrls.mapping}
-                              onChange={(e) => setSheetUrls(prev => ({ ...prev, mapping: e.target.value }))}
+                              value={sheetUrls[selectedBatch]?.mapping || ''}
+                              onChange={(e) => setSheetUrls(prev => ({
+                                ...prev,
+                                [selectedBatch]: { ...prev[selectedBatch], mapping: e.target.value }
+                              }))}
                               className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 focus:border-cyan-500/50 focus:outline-none text-xs text-slate-800 dark:text-white transition-all"
                             />
                           </div>
@@ -453,8 +514,11 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
                               type="url"
                               required
                               placeholder="https://docs.google.com/spreadsheets/d/...edit#gid=123"
-                              value={sheetUrls.theory}
-                              onChange={(e) => setSheetUrls(prev => ({ ...prev, theory: e.target.value }))}
+                              value={sheetUrls[selectedBatch]?.theory || ''}
+                              onChange={(e) => setSheetUrls(prev => ({
+                                ...prev,
+                                [selectedBatch]: { ...prev[selectedBatch], theory: e.target.value }
+                              }))}
                               className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 focus:border-cyan-500/50 focus:outline-none text-xs text-slate-800 dark:text-white transition-all"
                             />
                           </div>
@@ -465,8 +529,11 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
                               type="url"
                               required
                               placeholder="https://docs.google.com/spreadsheets/d/...edit#gid=456"
-                              value={sheetUrls.practical}
-                              onChange={(e) => setSheetUrls(prev => ({ ...prev, practical: e.target.value }))}
+                              value={sheetUrls[selectedBatch]?.practical || ''}
+                              onChange={(e) => setSheetUrls(prev => ({
+                                ...prev,
+                                [selectedBatch]: { ...prev[selectedBatch], practical: e.target.value }
+                              }))}
                               className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 focus:border-cyan-500/50 focus:outline-none text-xs text-slate-800 dark:text-white transition-all"
                             />
                           </div>
@@ -544,7 +611,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
                       /* MANUAL CSV UPLOAD */
                       <form onSubmit={handleManualSubmit} className="space-y-4">
                         <div className="space-y-3">
-                          {renderFileInput('mapping', 'Mapping File', 'Upload Roll No ↔ Name mapping (.csv)')}
+                          {renderFileInput('mapping', 'Mapping File (Optional)', 'Upload Roll No ↔ Name mapping (.csv)')}
                           {renderFileInput('theory', 'Theory Schedule', 'Upload theory dates & locations (.csv)')}
                           {renderFileInput('practical', 'Practical Schedule', 'Upload lab viva slots (.csv)')}
                         </div>

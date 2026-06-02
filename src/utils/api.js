@@ -57,14 +57,14 @@ export async function getStudentByRoll(rollNo) {
  * @param {string} practicalCsv - Practical Schedule CSV text
  * @returns {Promise<Object>} - The API response
  */
-export async function uploadAndSyncCsv(mappingCsv, theoryCsv, practicalCsv, password) {
+export async function uploadAndSyncCsv(batch, mappingCsv, theoryCsv, practicalCsv, password) {
   try {
     const response = await fetch(`${API_BASE}/api/students/upload-csv`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ mappingCsv, theoryCsv, practicalCsv, password })
+      body: JSON.stringify({ batch, mappingCsv, theoryCsv, practicalCsv, password })
     });
     const data = await response.json();
     if (!response.ok) {
@@ -126,11 +126,11 @@ export async function getSyncConfig() {
 /**
  * Syncs the database with student schedules from Google Sheets.
  */
-export async function syncGoogleSheets(mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey, password) {
+export async function syncGoogleSheets(batch, mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey, password) {
   const response = await fetch(`${API_BASE}/api/students/sync-sheets`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey, password })
+    body: JSON.stringify({ batch, mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey, password })
   });
   const data = await response.json();
   if (!response.ok) {

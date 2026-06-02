@@ -6,26 +6,50 @@ export const generateICS = (student) => {
 
     // Helper to parse date and time
     const parseDateTime = (dateStr, timeStr) => {
-        // Current year assumption as per plan
-        const currentYear = 2025;
+        let currentYear = 2026; // Default to 2026
+
+        // Extract year from date string if present (e.g. "2025", "2026")
+        const yearMatch = dateStr.match(/\b(202\d)\b/);
+        if (yearMatch) {
+            currentYear = parseInt(yearMatch[1]);
+        }
 
         let month, day;
 
-        // Handle "23rd December 2025"
-        if (dateStr.includes('2025')) {
-            const parts = dateStr.split(' ');
-            day = parseInt(parts[0]); // "23rd" -> 23
-            month = getMonthIndex(parts[1]);
+        // Handle "23/06/2026"
+        if (dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            day = parseInt(parts[0]);
+            month = parseInt(parts[1]) - 1;
+            if (parts[2]) {
+                const yr = parseInt(parts[2]);
+                if (yr > 2000) currentYear = yr;
+            }
         }
-        // Handle "Day 1 : 17th Dec : Wed"
-        else if (dateStr.includes(':')) {
+        // Handle "23rd December 2025" or "19th June (Friday)"
+        else {
+            // Remove day-of-week context like "(Friday)"
+            const cleanedDateStr = dateStr.replace(/\([a-zA-Z]+\)/, '').trim();
+            const parts = cleanedDateStr.split(/[\s,]+/);
+            day = parseInt(parts[0]);
+            
+            // Find month word (e.g. "December", "June", "Dec", "Jun")
+            const monthWord = parts.find(p => getMonthIndex(p) !== -1);
+            if (monthWord) {
+                month = getMonthIndex(monthWord);
+            }
+        }
+
+        // Handle "Day 1 : 17th Dec : Wed" or similar
+        if ((month === undefined || isNaN(day) || month === -1) && dateStr.includes(':')) {
             const parts = dateStr.split(':');
-            const datePart = parts[1].trim(); // "17th Dec"
+            const datePart = parts[1] ? parts[1].trim() : ''; 
             const dateSubParts = datePart.split(' ');
             day = parseInt(dateSubParts[0]);
             month = getMonthIndex(dateSubParts[1]);
-        } else {
-            // Fallback or error
+        }
+        
+        if (month === undefined || isNaN(day) || month === -1) {
             console.error("Unknown date format:", dateStr);
             return null;
         }

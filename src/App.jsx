@@ -48,15 +48,15 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] text-slate-800 dark:text-slate-200 font-sans selection:bg-cyan-500/30 transition-colors duration-500">
+    <div className="min-h-screen bg-slate-100/80 dark:bg-[#070b14] text-slate-800 dark:text-slate-200 font-sans selection:bg-cyan-500/30 transition-colors duration-500">
       {/* Header */}
       <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="fixed top-0 left-0 right-0 z-50 px-4 md:px-8 py-4 flex justify-between items-center bg-white/70 dark:bg-[#0B1120]/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/5 transition-colors duration-500"
+        className="fixed top-0 left-0 right-0 z-50 px-4 md:px-8 py-4 flex justify-between items-center bg-white/80 dark:bg-[#070b14]/80 backdrop-blur-xl border-b border-slate-200/60 dark:border-white/5 transition-colors duration-500"
       >
         <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
-          Created by <a href="https://somyacodes.in" target="_blank"><span className="text-cyan-500 font-bold">Somyajeet Singh</span></a>
+          Created by <a href="https://somyacodes.in" target="_blank" rel="noopener noreferrer" className="text-cyan-500 font-bold hover:underline">Somyajeet Singh</a>
         </div>
         <div className="flex items-center gap-4">
           <motion.button
@@ -95,7 +95,7 @@ function App() {
             y: [0, 30, 0]
           }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-0 left-1/4 w-64 h-64 md:w-96 md:h-96 bg-cyan-900/20 rounded-full blur-[128px]"
+          className="absolute top-0 left-1/4 w-64 h-64 md:w-96 md:h-96 bg-cyan-500/10 dark:bg-cyan-500/5 rounded-full blur-[128px]"
         />
         <motion.div
           animate={{
@@ -105,7 +105,7 @@ function App() {
             y: [0, -50, 0]
           }}
           transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute bottom-0 right-1/4 w-64 h-64 md:w-96 md:h-96 bg-purple-900/20 rounded-full blur-[128px]"
+          className="absolute bottom-0 right-1/4 w-64 h-64 md:w-96 md:h-96 bg-blue-500/5 dark:bg-indigo-500/5 rounded-full blur-[128px]"
         />
       </div >
 
@@ -119,7 +119,7 @@ function App() {
             Exam Scheduler
           </h1>
           <p className="text-slate-400 text-lg">
-            Batch 25-29 • Semester 2 • Sprint 2
+            Multi-Batch • Semester Exam Schedules
           </p>
         </motion.div>
 
@@ -139,7 +139,7 @@ function App() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="mt-16 bg-white/40 dark:bg-slate-900/20 backdrop-blur-xl border border-slate-200/50 dark:border-white/5 rounded-3xl p-6 md:p-8 max-w-2xl mx-auto shadow-2xl relative overflow-hidden transition-colors duration-500"
+            className="mt-16 bg-white dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/5 rounded-3xl p-6 md:p-8 max-w-2xl mx-auto shadow-[0_8px_30px_rgb(0,0,0,0.03)] dark:shadow-2xl relative overflow-hidden transition-colors duration-500"
           >
             {/* Header info */}
             <div className="flex items-center gap-3 justify-center mb-8">
@@ -151,7 +151,7 @@ function App() {
 
             {/* Stats grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-              <div className="bg-slate-100/50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center text-center transition-colors">
+              <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center text-center transition-colors">
                 <Database className="text-cyan-500 w-6 h-6 mb-2" />
                 <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Database Status</span>
                 <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200 mt-1 flex items-center gap-1.5 justify-center">
@@ -159,24 +159,24 @@ function App() {
                   {dbStatus === 'online' ? 'Connected' : dbStatus === 'connecting' ? 'Connecting...' : 'Offline'}
                 </span>
               </div>
-              <div className="bg-slate-100/50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center text-center transition-colors">
+              <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center text-center transition-colors">
                 <Users className="text-purple-500 w-6 h-6 mb-2" />
                 <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Schedules</span>
                 <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200 mt-1">
                   {studentCount} Students
                 </span>
               </div>
-              <div className="bg-slate-100/50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center text-center transition-colors">
+              <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center text-center transition-colors">
                 <Calendar className="text-pink-500 w-6 h-6 mb-2" />
-                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Active Term</span>
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Active Batches</span>
                 <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200 mt-1">
-                  Sem 2 • Sprint 2
+                  2023-27 • 2024-28 • 2025-29
                 </span>
               </div>
             </div>
 
             {/* Quick guide */}
-            <div className="space-y-3.5 bg-slate-50/50 dark:bg-slate-950/40 rounded-2xl p-5 border border-slate-200 dark:border-white/5 transition-colors">
+            <div className="space-y-3.5 bg-slate-50 dark:bg-slate-950/50 rounded-2xl p-5 border border-slate-200/60 dark:border-white/5 transition-colors">
               <div className="flex gap-3 text-left">
                 <HelpCircle className="text-cyan-500 w-5 h-5 flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
@@ -192,8 +192,6 @@ function App() {
                 </div>
               </div>
             </div>
-
-            <p className="mt-8 text-cyan-400 font-bold text-lg tracking-wide uppercase">Thanks me Later 😉</p>
           </motion.div>
         )}
       </div>

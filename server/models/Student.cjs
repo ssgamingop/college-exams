@@ -23,6 +23,11 @@ const StudentSchema = new mongoose.Schema({
     required: true, 
     index: true 
   },
+  batch: {
+    type: String,
+    required: true,
+    index: true
+  },
   theory: [ExamSchema],
   practical: [ExamSchema]
 }, { timestamps: true, strict: false });

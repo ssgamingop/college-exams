@@ -140,9 +140,16 @@ const ScheduleCard = ({ student }) => {
                 </motion.button>
 
                 <div className="relative z-10">
-                    <h2 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-700 to-slate-900 dark:from-white dark:via-slate-200 dark:to-slate-400 mb-3 tracking-tight transition-all duration-500">
-                        {student.name}
-                    </h2>
+                    <div className="flex flex-col md:flex-row items-center justify-center gap-3 mb-3">
+                        <h2 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-700 to-slate-900 dark:from-white dark:via-slate-200 dark:to-slate-400 tracking-tight transition-all duration-500">
+                            {student.name}
+                        </h2>
+                        {student.batch && (
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-200 border border-cyan-200 dark:border-cyan-800/50 transition-all duration-300">
+                                Batch {student.batch}
+                            </span>
+                        )}
+                    </div>
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 text-cyan-600 dark:text-cyan-400 font-mono text-lg md:text-xl tracking-wider group/roll transition-colors duration-300">
                         <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
                         {student.rollNo}

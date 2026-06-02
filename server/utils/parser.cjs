@@ -112,6 +112,31 @@ function parseMapping(csvText) {
 }
 
 /**
+ * Shortens and standardizes subject names for consistency.
+ */
+function cleanSubjectName(subject) {
+  if (!subject) return '';
+  const clean = subject.replace(/\s+/g, ' ').trim();
+  
+  if (/dsa\s*3/i.test(clean)) {
+    return 'DSA 3';
+  }
+  if (/software testing|stqa/i.test(clean)) {
+    return 'STQA';
+  }
+  if (/amazon web service|aws|gcp/i.test(clean)) {
+    return 'AWS';
+  }
+  if (/devops/i.test(clean)) {
+    return 'DevOps';
+  }
+  if (/system design/i.test(clean)) {
+    return 'System Design';
+  }
+  return clean;
+}
+
+/**
  * Parses and maps Theory CSV schedules to student profiles.
  */
 function parseTheory(csvText, students, markers = {}) {
@@ -198,13 +223,15 @@ function parseTheory(csvText, students, markers = {}) {
     if (!rollField) continue;
 
     let subject = currentSubject;
-    if (subject === 'Aptitude - I - DILR') {
+    if (subject.startsWith('Aptitude - I - DILR')) {
       const mode = modeIdx !== -1 && cols[modeIdx] ? cols[modeIdx].trim() : '';
       if (mode.toLowerCase().includes('mcq')) {
         subject = 'Aptitude - I - DILR (MCQ)';
       } else {
         subject = 'Aptitude - I - DILR (Theory)';
       }
+    } else {
+      subject = cleanSubjectName(subject);
     }
 
     // Capture additional headers as dynamic keys
@@ -217,8 +244,12 @@ function parseTheory(csvText, students, markers = {}) {
 
     const parts = rollField.split(',').map(p => p.trim());
     parts.forEach(part => {
-      if (part.includes(' to ')) {
-        const rollParts = part.split(' to ');
+      const rangeSeparator = part.includes(' to ') ? ' to ' : 
+                             part.includes('-') ? '-' : 
+                             part.includes('–') ? '–' : 
+                             part.includes('—') ? '—' : null;
+      if (rangeSeparator) {
+        const rollParts = part.split(rangeSeparator);
         if (rollParts.length < 2) return;
         try {
           const startRoll = BigInt(rollParts[0].trim());
@@ -389,7 +420,7 @@ function parsePractical(csvText, students, markers = {}) {
 
           student.practical.push({
             date: currentDate,
-            subject: headerInfo.subject,
+            subject: cleanSubjectName(headerInfo.subject),
             panel: headerInfo.panel,
             time: time.trim(),
             location: location,
@@ -493,12 +524,70 @@ Respond ONLY with a valid JSON object. Do not include any explanation or markdow
 }
 
 /**
+ * Dynamically generates student mappings from the practical schedule if mapping is not provided.
+ */
+function generateDynamicMapping(practicalCsv, batch) {
+  const lines = getLines(practicalCsv);
+  const names = new Set();
+  
+  const dayRowMarker = 'Day';
+  const panelMarker = 'Slot No.';
+  const timeMarker = 'Time';
+  const venueMarker = 'Venue';
+
+  for (let i = 0; i < lines.length; i++) {
+    const row = parseCsvLine(lines[i]);
+    if (!row || row.length === 0) continue;
+    
+    // Skip date, venue, panel and time slots rows
+    const dateCell = (row[0] && row[0].includes(dayRowMarker)) ? row[0] 
+                   : (row[1] && row[1].includes(dayRowMarker) ? row[1] : null);
+    if (dateCell) continue;
+    if ((row[0] && row[0].includes(venueMarker)) || (row[1] && row[1].includes(venueMarker))) continue;
+    if (row[0] && row[0].includes(panelMarker)) continue;
+    if (row[1] && row[1].includes(timeMarker)) continue;
+
+    const time = row[1];
+    if (!time || (!time.includes('M') && !time.includes('-'))) continue;
+
+    for (let j = 2; j < row.length; j++) {
+      const cell = row[j];
+      if (cell && cell.length > 2 && cell !== 'NA' && cell !== 'Break' && cell !== 'Break (1:15 PM – 2:00 PM)') {
+        names.add(cell.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim());
+      }
+    }
+  }
+
+  // Deduce starting roll number based on batch name
+  let startRoll = 150096725001n;
+  const match = batch.match(/^20?(\d{2})-(\d{2})$/);
+  if (match) {
+    const entryYear = match[1]; // e.g. "23" or "24"
+    startRoll = BigInt(`1500967${entryYear}001`);
+  }
+
+  const sortedNames = Array.from(names).sort();
+  const students = new Map();
+  sortedNames.forEach((name, index) => {
+    const rollNo = (startRoll + BigInt(index)).toString();
+    students.set(rollNo, {
+      rollNo,
+      name,
+      theory: [],
+      practical: []
+    });
+  });
+
+  return students;
+}
+
+/**
  * Combines Mapping, Theory, and Practical CSV inputs into the student array.
  */
 async function parseCsvData(mappingCsv, theoryCsv, practicalCsv, options = {}) {
   let markers = {};
 
-  if (options.useAi) {
+  if (options.useAi && mappingCsv && mappingCsv.trim().length > 0) {
     try {
       console.log('🤖 AI Sync Enabled: Consulting Groq to detect schema structure...');
       markers = await getMarkersWithGroq(mappingCsv, theoryCsv, practicalCsv, options.groqApiKey);
@@ -508,9 +597,15 @@ async function parseCsvData(mappingCsv, theoryCsv, practicalCsv, options = {}) {
     }
   }
 
-  // 1. Process mapping
-  const students = parseMapping(mappingCsv);
-  console.log(`Parsed ${students.size} students from Mapping CSV.`);
+  // 1. Process mapping or dynamically generate it
+  let students;
+  if (!mappingCsv || mappingCsv.trim().length === 0 || mappingCsv.trim() === 'Roll Number,Name of student') {
+    console.log(`⚠️ Mapping CSV not provided. Dynamically generating mapping from practical schedule...`);
+    students = generateDynamicMapping(practicalCsv, options.batch || '2025-29');
+  } else {
+    students = parseMapping(mappingCsv);
+  }
+  console.log(`Parsed ${students.size} students for batch ${options.batch || '2025-29'}.`);
 
   // 2. Process Theory
   parseTheory(theoryCsv, students, markers.theory || {});
@@ -519,6 +614,12 @@ async function parseCsvData(mappingCsv, theoryCsv, practicalCsv, options = {}) {
   // 3. Process Practical
   parsePractical(practicalCsv, students, markers.practical || {});
   console.log('Parsed Practical exams successfully.');
+
+  // Assign batch attribute to each student
+  const batchName = options.batch || '2025-29';
+  students.forEach(student => {
+    student.batch = batchName;
+  });
 
   return Array.from(students.values());
 }

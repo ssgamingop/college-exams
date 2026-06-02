@@ -1,6 +1,20 @@
 {
-  "mappingUrl": "https://docs.google.com/spreadsheets/d/1unGrA8Fe2MhrZu4tszWLxJZ1OPtGOEPWQUSD4WOJmbo/edit?usp=sharing",
-  "theoryUrl": "https://docs.google.com/spreadsheets/d/1xH-g0u97L1N_uwr-LQMN3kyWOZoRS8ygisiUj21RjAU/edit?gid=1436056859#gid=1436056859",
-  "practicalUrl": "https://docs.google.com/spreadsheets/d/1xH-g0u97L1N_uwr-LQMN3kyWOZoRS8ygisiUj21RjAU/edit?gid=1138574159#gid=1138574159",
-  "useAi": false
+  "batches": {
+    "2023-27": {
+      "mappingUrl": "",
+      "theoryUrl": "",
+      "practicalUrl": ""
+    },
+    "2024-28": {
+      "mappingUrl": "",
+      "theoryUrl": "",
+      "practicalUrl": ""
+    },
+    "2025-29": {
+      "mappingUrl": "https://docs.google.com/spreadsheets/d/1unGrA8Fe2MhrZu4tszWLxJZ1OPtGOEPWQUSD4WOJmbo/edit?usp=sharing",
+      "theoryUrl": "https://docs.google.com/spreadsheets/d/1xH-g0u97L1N_uwr-LQMN3kyWOZoRS8ygisiUj21RjAU/edit?gid=1436056859#gid=1436056859",
+      "practicalUrl": "https://docs.google.com/spreadsheets/d/1xH-g0u97L1N_uwr-LQMN3kyWOZoRS8ygisiUj21RjAU/edit?gid=1138574159#gid=1138574159"
+    }
+  },
+  "useAi": true
 }
