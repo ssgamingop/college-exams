@@ -37,7 +37,7 @@ const ExamItem = ({ exam, type }) => {
     return (
         <motion.div
             variants={item}
-            className={`group relative bg-white/50 dark:bg-slate-950 text-left backdrop-blur-sm rounded-xl p-5 border border-slate-200 dark:border-white/5 ${borderColor} transition-all duration-300 ${shadowColor}`}
+            className={`group relative bg-white/50 dark:bg-slate-950 text-left backdrop-blur-sm rounded-xl p-5 border border-slate-200 dark:border-white/5 ${borderColor} transition-[border-color,background-color,box-shadow] duration-300 ${shadowColor}`}
         >
             <div className="flex flex-col gap-4">
                 {/* Subject Header */}
@@ -120,7 +120,7 @@ const ScheduleCard = ({ student }) => {
             opacity: 1,
             y: 0,
             transition: {
-                staggerChildren: 0.1
+                staggerChildren: 0.05
             }
         }
     };
@@ -267,6 +267,7 @@ const ScheduleCard = ({ student }) => {
                         loop
                         muted
                         playsInline
+                        preload="metadata"
                         className="w-full h-auto object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent pointer-events-none" />

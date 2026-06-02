@@ -54,63 +54,45 @@ function App() {
       <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="fixed top-0 left-0 right-0 z-50 px-4 md:px-8 py-4 flex justify-between items-center bg-white/80 dark:bg-[#070b14]/80 backdrop-blur-xl border-b border-slate-200/60 dark:border-white/5 transition-colors duration-500"
+        className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-8 py-3 sm:py-4 flex justify-between items-center bg-white/80 dark:bg-[#070b14]/80 backdrop-blur-xl border-b border-slate-200/60 dark:border-white/5 transition-colors duration-500"
       >
-        <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
+        <div className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
           Created by <a href="https://somyacodes.in" target="_blank" rel="noopener noreferrer" className="text-cyan-500 font-bold hover:underline">Somyajeet Singh</a>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsAdminOpen(true)}
-            className="p-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 transition-colors"
+            className="p-1.5 sm:p-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 transition-colors"
             title="Admin: Sync Database"
           >
-            <Database size={20} className="text-cyan-500" />
+            <Database size={18} className="text-cyan-500 sm:w-5 sm:h-5" />
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={toggleTheme}
-            className="p-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 transition-colors"
+            className="p-1.5 sm:p-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 transition-colors"
           >
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            {theme === 'dark' ? <Sun size={18} className="sm:w-5 sm:h-5" /> : <Moon size={18} className="sm:w-5 sm:h-5" />}
           </motion.button>
           <a href="https://github.com/ssgamingop" target="_blank" rel="noopener noreferrer" className="text-slate-500 dark:text-slate-400 hover:text-black dark:hover:text-white transition-colors">
-            <Github size={20} />
+            <Github size={18} className="sm:w-5 sm:h-5" />
           </a>
           <a href="https://instagram.com/somyajeet.op" target="_blank" rel="noopener noreferrer" className="text-slate-500 dark:text-slate-400 hover:text-pink-500 transition-colors">
-            <Instagram size={20} />
+            <Instagram size={18} className="sm:w-5 sm:h-5" />
           </a>
         </div>
       </motion.header>
 
-      {/* Subtle Background */}
-      < div className="fixed inset-0 overflow-hidden pointer-events-none" >
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-            x: [0, 50, 0],
-            y: [0, 30, 0]
-          }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-0 left-1/4 w-64 h-64 md:w-96 md:h-96 bg-cyan-500/10 dark:bg-cyan-500/5 rounded-full blur-[128px]"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.3, 0.5, 0.3],
-            x: [0, -30, 0],
-            y: [0, -50, 0]
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute bottom-0 right-1/4 w-64 h-64 md:w-96 md:h-96 bg-blue-500/5 dark:bg-indigo-500/5 rounded-full blur-[128px]"
-        />
-      </div >
+      {/* Subtle Background - Static for maximum performance */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-0 left-1/4 w-64 h-64 md:w-96 md:h-96 bg-cyan-500/10 dark:bg-cyan-500/5 rounded-full blur-[100px] sm:blur-[128px] transform -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-1/4 w-64 h-64 md:w-96 md:h-96 bg-blue-500/5 dark:bg-indigo-500/5 rounded-full blur-[100px] sm:blur-[128px] transform translate-x-1/2 translate-y-1/2" />
+      </div>
 
-      <div className="relative z-10 container mx-auto px-4 pt-32 pb-16 max-w-5xl">
+      <div className="relative z-10 container mx-auto px-4 pt-24 sm:pt-32 pb-16 max-w-5xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
