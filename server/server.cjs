@@ -119,6 +119,17 @@ app.use(connectDB);
 
 // --- API Routes ---
 
+// Get search index of all students (lightweight name, rollNo, batch for instant client-side search)
+app.get('/api/students/search-index', async (req, res) => {
+  try {
+    const students = await Student.find({}, 'name rollNo batch').lean();
+    res.json(students);
+  } catch (error) {
+    console.error('Error getting search index:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 // 1. Search students (by name or roll number)
 app.get('/api/students/search', async (req, res) => {
   try {

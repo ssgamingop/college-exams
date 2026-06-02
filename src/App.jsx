@@ -11,6 +11,7 @@ function App() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [studentCount, setStudentCount] = useState(0);
+  const [syncVersion, setSyncVersion] = useState(0);
   const [dbStatus, setDbStatus] = useState('connecting'); // connecting | online | offline
   const [theme, setTheme] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -124,6 +125,7 @@ function App() {
         </motion.div>
 
         <Search
+          key={syncVersion}
           onSelectStudent={setSelectedStudent}
         />
 
@@ -201,6 +203,7 @@ function App() {
         onClose={() => setIsAdminOpen(false)}
         onSyncSuccess={() => {
           setSelectedStudent(null);
+          setSyncVersion(prev => prev + 1);
         }}
       />
       <Analytics />

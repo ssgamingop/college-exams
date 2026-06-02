@@ -24,7 +24,15 @@ const ExamItem = ({ exam, type }) => {
         : 'bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-400/10 dark:text-cyan-300 dark:border-cyan-400/20';
 
     const standardFields = ['date', 'subject', 'time', 'location', 'type', 'panel', 'professor', '_id', '__v'];
-    const extraFields = Object.keys(exam).filter(key => !standardFields.includes(key) && exam[key]);
+    const extraFields = Object.keys(exam).filter(key => {
+        if (standardFields.includes(key)) return false;
+        if (!exam[key]) return false;
+        if (key.toLowerCase().includes('noofstudent')) {
+            const hasLocation = exam.location && exam.location !== 'TBD' && exam.location.trim() !== '';
+            if (!hasLocation) return false;
+        }
+        return true;
+    });
 
     return (
         <motion.div

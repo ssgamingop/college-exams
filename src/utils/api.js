@@ -28,6 +28,23 @@ export async function searchStudents(query) {
 }
 
 /**
+ * Gets a lightweight list of all students (name, rollNo, batch) for instant client-side search.
+ * @returns {Promise<Array>} - List of student objects for search index.
+ */
+export async function getSearchIndex() {
+  try {
+    const response = await fetch(`${API_BASE}/api/students/search-index`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch search index');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error in getSearchIndex:', error);
+    return [];
+  }
+}
+
+/**
  * Gets a student's full schedule by their unique roll number.
  * @param {string} rollNo - The roll number of the student.
  * @returns {Promise<Object|null>} - The student object or null if not found.

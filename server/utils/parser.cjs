@@ -89,7 +89,20 @@ function parseMapping(csvText) {
   const lines = getLines(csvText);
   if (lines.length === 0) throw new Error('Mapping CSV file is empty');
 
-  const headers = parseCsvLine(lines[0]);
+  // Auto-scan for header row (up to 5 lines)
+  let headerRowIdx = 0;
+  for (let i = 0; i < Math.min(lines.length, 5); i++) {
+    const row = parseCsvLine(lines[i]);
+    if (row.some(c => {
+      const l = c.toLowerCase();
+      return l.includes('roll') || l.includes('urn') || l.includes('name') || l.includes('student') || l.includes('id');
+    })) {
+      headerRowIdx = i;
+      break;
+    }
+  }
+
+  const headers = parseCsvLine(lines[headerRowIdx]);
   let rollColIdx = headers.findIndex(c => {
     const l = c.toLowerCase();
     return l.includes('roll') || l.includes('id') || l.includes('urn');
@@ -103,12 +116,18 @@ function parseMapping(csvText) {
   if (nameColIdx === -1) nameColIdx = 1;
 
   const students = new Map();
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = headerRowIdx + 1; i < lines.length; i++) {
     const cols = parseCsvLine(lines[i]);
     if (cols.length > Math.max(rollColIdx, nameColIdx)) {
-      const rollNo = cols[rollColIdx];
-      const name = cols[nameColIdx];
-      if (rollNo && name && rollNo !== '__proto__' && rollNo !== 'constructor') {
+      const rollNo = cols[rollColIdx].trim();
+      const name = cols[nameColIdx].trim();
+      
+      const isHeaderLabel = rollNo.toLowerCase().includes('roll') || 
+                            rollNo.toLowerCase().includes('sr. no') || 
+                            rollNo.toLowerCase().includes('urn') ||
+                            rollNo.toLowerCase().includes('id');
+
+      if (rollNo && name && rollNo !== '__proto__' && rollNo !== 'constructor' && !isHeaderLabel) {
         students.set(rollNo, {
           rollNo,
           name,
@@ -502,7 +521,7 @@ Respond ONLY with a valid JSON object. Do not include any explanation or markdow
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-specdec',
+      model: 'llama-3.3-70b-versatile',
       messages: [
         {
           role: 'user',

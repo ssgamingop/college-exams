@@ -1,41 +1,69 @@
 import React, { useState, useEffect } from 'react';
 import { Search as SearchIcon, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { searchStudents } from '../utils/api';
+import { getStudentByRoll, getSearchIndex } from '../utils/api';
 
 const Search = ({ onSelectStudent }) => {
     const [query, setQuery] = useState('');
+    const [searchIndex, setSearchIndex] = useState([]);
     const [suggestions, setSuggestions] = useState([]);
     const [isFocused, setIsFocused] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isIndexing, setIsIndexing] = useState(true);
 
+    // Fetch lightweight search index on mount
+    useEffect(() => {
+        let active = true;
+        const loadIndex = async () => {
+            try {
+                const index = await getSearchIndex();
+                if (active) {
+                    setSearchIndex(index);
+                }
+            } catch (err) {
+                console.error('Failed to load search index:', err);
+            } finally {
+                if (active) {
+                    setIsIndexing(false);
+                }
+            }
+        };
+        loadIndex();
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    // Filter suggestions instantaneously on query change
     useEffect(() => {
         if (query.trim().length < 2) {
             setSuggestions([]);
-            setIsLoading(false);
             return;
         }
 
-        setIsLoading(true);
-        const delayDebounceFn = setTimeout(async () => {
-            try {
-                const results = await searchStudents(query);
-                setSuggestions(results);
-            } catch (err) {
-                console.error('Failed to fetch suggestions:', err);
-                setSuggestions([]);
-            } finally {
-                setIsLoading(false);
-            }
-        }, 300); // 300ms debounce to prevent spamming database queries
+        const normalizedQuery = query.trim().toLowerCase();
+        const filtered = searchIndex.filter(student => 
+            (student.name && student.name.toLowerCase().includes(normalizedQuery)) ||
+            (student.rollNo && student.rollNo.toLowerCase().includes(normalizedQuery))
+        ).slice(0, 10);
 
-        return () => clearTimeout(delayDebounceFn);
-    }, [query]);
+        setSuggestions(filtered);
+    }, [query, searchIndex]);
 
-    const handleSelect = (student) => {
+    const handleSelect = async (student) => {
         setQuery(student.name);
         setSuggestions([]);
-        onSelectStudent(student);
+        setIsLoading(true);
+        try {
+            const fullStudent = await getStudentByRoll(student.rollNo);
+            if (fullStudent) {
+                onSelectStudent(fullStudent);
+            }
+        } catch (err) {
+            console.error('Failed to fetch full student details:', err);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
