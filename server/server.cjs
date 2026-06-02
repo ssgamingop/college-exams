@@ -294,8 +294,8 @@ app.post('/api/students/sync-sheets', adminUploadRateLimiter, async (req, res) =
   try {
     const { batch, mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey, password } = req.body;
     
-    if (!batch) {
-      return res.status(400).json({ error: 'Batch identifier is required.' });
+    if (!batch || typeof batch !== 'string') {
+      return res.status(400).json({ error: 'Batch identifier must be a valid string.' });
     }
 
     // Validate Admin password
@@ -409,8 +409,8 @@ app.post('/api/students/upload-csv', adminUploadRateLimiter, async (req, res) =>
   try {
     const { batch, mappingCsv, theoryCsv, practicalCsv, password } = req.body;
     
-    if (!batch) {
-      return res.status(400).json({ error: 'Batch identifier is required.' });
+    if (!batch || typeof batch !== 'string') {
+      return res.status(400).json({ error: 'Batch identifier must be a valid string.' });
     }
 
     // Authenticate Admin Password

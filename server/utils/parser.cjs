@@ -24,6 +24,16 @@ function getCsvUrl(sheetUrl) {
  * Throws a helpful error if the sheet is private (returns HTML).
  */
 async function fetchCsvText(url) {
+  // SSRF Protection: restrict requests to Google Sheets domains
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.hostname !== 'docs.google.com' && parsedUrl.hostname !== 'google.com' && !parsedUrl.hostname.endsWith('.google.com')) {
+      throw new Error('SSRF Protection: Only Google Sheets links are allowed.');
+    }
+  } catch (err) {
+    throw new Error('SSRF Protection: Invalid URL structure.');
+  }
+
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Failed to download spreadsheet (HTTP ${res.status}). Verify the URL.`);
