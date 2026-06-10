@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const helmet = require('helmet');
 const jwt = require('jsonwebtoken');
 
-// Load environment variables
+// Load environment variables (dotenv for local dev; Vercel injects env vars natively)
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const Student = require('./models/Student.cjs');
