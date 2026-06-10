@@ -12,16 +12,16 @@ const ExamSchema = new mongoose.Schema({
 }, { strict: false });
 
 const StudentSchema = new mongoose.Schema({
-  rollNo: { 
-    type: String, 
-    required: true, 
-    unique: true, 
-    index: true 
+  rollNo: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true
   },
-  name: { 
-    type: String, 
-    required: true, 
-    index: true 
+  name: {
+    type: String,
+    required: true,
+    index: true
   },
   batch: {
     type: String,
@@ -36,3 +36,4 @@ const StudentSchema = new mongoose.Schema({
 StudentSchema.index({ name: 'text', rollNo: 'text' });
 
 module.exports = mongoose.model('Student', StudentSchema);
+
