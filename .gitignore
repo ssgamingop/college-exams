@@ -27,3 +27,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Server sync configuration (contains Google Sheet URLs)
+server/config.json

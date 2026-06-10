@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, UploadCloud, CheckCircle, AlertTriangle, Database, Sparkles, RefreshCw, Lock, Link as LinkIcon, Eye, EyeOff, ShieldCheck, HelpCircle } from 'lucide-react';
-import { uploadAndSyncCsv, verifyPassword, getSyncConfig, syncGoogleSheets } from '../utils/api';
+import { X, UploadCloud, CheckCircle, AlertTriangle, Database, Sparkles, RefreshCw, Lock, Link as LinkIcon, Eye, EyeOff, ShieldCheck, HelpCircle, Layers } from 'lucide-react';
+import { uploadAndSyncCsv, verifyPassword, getSyncConfig, syncGoogleSheets, syncAllSheets, hasAuthToken, clearAuthToken } from '../utils/api';
 
 const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -33,6 +33,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
   const [statusMsg, setStatusMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [seededCount, setSeededCount] = useState(0);
+  const [syncAllResults, setSyncAllResults] = useState(null);
 
   const fileInputRefs = {
     mapping: useRef(null),
@@ -40,19 +41,35 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
     practical: useRef(null)
   };
 
-  // Check session storage on mount / open
+  // Check for existing JWT session on mount / open
   useEffect(() => {
     if (isOpen) {
-      const savedPass = sessionStorage.getItem('adminPassword');
-      if (savedPass) {
-        setPassword(savedPass);
-        handleUnlock(savedPass);
+      if (hasAuthToken()) {
+        // Validate the existing token by loading config
+        handleResumeSession();
       } else {
         setIsAuthenticated(false);
         setStatus('idle');
       }
     }
   }, [isOpen]);
+
+  const handleResumeSession = async () => {
+    try {
+      setStatus('loading');
+      setStatusMsg('Resuming session...');
+      setErrorMsg('');
+      await loadConfig();
+      setIsAuthenticated(true);
+      setStatus('idle');
+    } catch (err) {
+      // Token is invalid or expired — force re-login
+      clearAuthToken();
+      setIsAuthenticated(false);
+      setStatus('idle');
+      setErrorMsg('');
+    }
+  };
 
   const handleUnlock = async (passToVerify) => {
     const checkPass = passToVerify || password;
@@ -66,11 +83,11 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
       setStatusMsg('Authorizing session...');
       setErrorMsg('');
 
+      // verifyPassword stores the JWT token internally
       await verifyPassword(checkPass);
       
-      // Save password in session storage
-      sessionStorage.setItem('adminPassword', checkPass);
-      setPassword(checkPass);
+      // Clear the password from state — never store it
+      setPassword('');
       setIsAuthenticated(true);
       
       // Load current configurations
@@ -80,7 +97,6 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
       console.error(err);
       setErrorMsg(err.message || 'Authentication failed. Please verify the admin password.');
       setStatus('idle');
-      sessionStorage.removeItem('adminPassword');
       setIsAuthenticated(false);
     }
   };
@@ -125,6 +141,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
       if (savedKey) setGroqApiKey(savedKey);
     } catch (err) {
       console.error('Failed to load sync configurations:', err);
+      throw err; // Re-throw so handleResumeSession can catch token issues
     }
   };
 
@@ -169,6 +186,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
       setStatus('loading');
       setStatusMsg(`Ingesting files for Batch ${selectedBatch}...`);
       setErrorMsg('');
+      setSyncAllResults(null);
 
       const [mappingText, theoryText, practicalText] = await Promise.all([
         batchFiles.mapping ? readFileText(batchFiles.mapping) : Promise.resolve(''),
@@ -176,12 +194,16 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
         readFileText(batchFiles.practical)
       ]);
 
-      const result = await uploadAndSyncCsv(selectedBatch, mappingText, theoryText, practicalText, password);
+      const result = await uploadAndSyncCsv(selectedBatch, mappingText, theoryText, practicalText);
       setSeededCount(result.count);
       setStatus('success');
       if (onSyncSuccess) onSyncSuccess();
     } catch (err) {
       console.error(err);
+      if (err.message.includes('expired') || err.message.includes('log in')) {
+        clearAuthToken();
+        setIsAuthenticated(false);
+      }
       setErrorMsg(err.message || 'Manual CSV sync failed.');
       setStatus('error');
     }
@@ -199,6 +221,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
       setStatus('loading');
       setStatusMsg(useAi ? `AI-Assisted parsing & syncing for Batch ${selectedBatch}... (Consulting Groq)` : `Syncing Google Sheets for Batch ${selectedBatch}...`);
       setErrorMsg('');
+      setSyncAllResults(null);
 
       // Save API key locally if user entered one
       if (groqApiKey.trim()) {
@@ -213,8 +236,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
         batchUrls.theory,
         batchUrls.practical,
         useAi,
-        groqApiKey.trim() || null,
-        password
+        groqApiKey.trim() || null
       );
 
       setSeededCount(result.count);
@@ -222,13 +244,40 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
       if (onSyncSuccess) onSyncSuccess();
     } catch (err) {
       console.error(err);
+      if (err.message.includes('expired') || err.message.includes('log in')) {
+        clearAuthToken();
+        setIsAuthenticated(false);
+      }
       setErrorMsg(err.message || 'Google Sheets sync failed.');
       setStatus('error');
     }
   };
 
+  const handleSyncAll = async () => {
+    try {
+      setStatus('loading');
+      setStatusMsg('Syncing all batches from saved links...');
+      setErrorMsg('');
+      setSyncAllResults(null);
+
+      const result = await syncAllSheets();
+      setSeededCount(result.totalCount);
+      setSyncAllResults(result);
+      setStatus('success');
+      if (onSyncSuccess) onSyncSuccess();
+    } catch (err) {
+      console.error(err);
+      if (err.message.includes('expired') || err.message.includes('log in')) {
+        clearAuthToken();
+        setIsAuthenticated(false);
+      }
+      setErrorMsg(err.message || 'Sync All Batches failed.');
+      setStatus('error');
+    }
+  };
+
   const handleLogout = () => {
-    sessionStorage.removeItem('adminPassword');
+    clearAuthToken();
     setIsAuthenticated(false);
     setPassword('');
     setErrorMsg('');
@@ -241,12 +290,14 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
     }));
     setStatus('idle');
     setErrorMsg('');
+    setSyncAllResults(null);
   };
 
   const handleClose = () => {
     if (status === 'loading') return;
     setErrorMsg('');
     setStatus('idle');
+    setSyncAllResults(null);
     onClose();
   };
 
@@ -275,7 +326,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
           </div>
           <div className="text-left">
             <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{label}</h4>
-            <p className="text-xs text-slate-500">{isSelected ? files[type].name : description}</p>
+            <p className="text-xs text-slate-500">{isSelected ? files[selectedBatch]?.[type]?.name : description}</p>
           </div>
         </div>
         <input
@@ -309,7 +360,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className="relative w-full max-w-lg overflow-hidden bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 shadow-2xl rounded-3xl p-6 md:p-8 z-10 text-left"
+            className="relative w-full max-w-lg overflow-hidden bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 shadow-2xl rounded-3xl p-6 md:p-8 z-10 text-left max-h-[90vh] overflow-y-auto"
           >
             <button
               onClick={handleClose}
@@ -353,7 +404,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
                         <Lock size={24} />
                       </div>
                       <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Session Authorization Required</h4>
-                      <p className="text-xs text-slate-500 max-w-xs">Provide your admin password to view options and sync schedules.</p>
+                      <p className="text-xs text-slate-500 max-w-xs">Provide your admin password to start a secure session.</p>
                     </div>
 
                     <div className="flex flex-col gap-2 relative">
@@ -363,6 +414,7 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        autoComplete="current-password"
                         className="w-full pl-4 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 focus:border-cyan-500/50 focus:outline-none text-sm text-slate-800 dark:text-white transition-all shadow-sm"
                       />
                       <button
@@ -413,9 +465,28 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
                     <h4 className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-1">
                       Synchronization Complete!
                     </h4>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium max-w-xs mb-5">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium max-w-xs mb-3">
                       Successfully parsed and updated <span className="text-cyan-500 font-extrabold">{seededCount}</span> student schedules in MongoDB!
                     </p>
+                    
+                    {/* Per-batch breakdown for Sync All */}
+                    {syncAllResults && syncAllResults.results && (
+                      <div className="w-full space-y-1.5 mb-4">
+                        {syncAllResults.results.map(r => (
+                          <div key={r.batch} className="flex justify-between text-[11px] px-3 py-1.5 bg-emerald-100/50 dark:bg-emerald-500/10 rounded-lg">
+                            <span className="text-slate-600 dark:text-slate-300 font-medium">Batch {r.batch}</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">{r.count} students</span>
+                          </div>
+                        ))}
+                        {syncAllResults.errors && syncAllResults.errors.map(e => (
+                          <div key={e.batch} className="flex justify-between text-[11px] px-3 py-1.5 bg-rose-100/50 dark:bg-rose-500/10 rounded-lg">
+                            <span className="text-slate-600 dark:text-slate-300 font-medium">Batch {e.batch}</span>
+                            <span className="text-rose-500 font-medium">{e.error}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="flex gap-3 w-full">
                       <button
                         onClick={handleReset}
@@ -590,21 +661,33 @@ const AdminModal = ({ isOpen, onClose, onSyncSuccess }) => {
                           </div>
                         </div>
 
-                        <div className="pt-2 flex gap-3">
+                        <div className="pt-2 space-y-2.5">
+                          {/* Sync All Batches Button */}
                           <button
                             type="button"
-                            onClick={handleLogout}
-                            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-xs transition-all border border-slate-200 dark:border-white/5"
+                            onClick={handleSyncAll}
+                            className="w-full px-4 py-2.5 bg-gradient-to-r from-violet-500 to-cyan-500 hover:from-violet-400 hover:to-cyan-400 text-white font-bold rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-1.5"
                           >
-                            Lock
+                            <Layers size={14} />
+                            <span>Sync All Batches from Saved Links</span>
                           </button>
-                          <button
-                            type="submit"
-                            className="flex-1 px-4 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-1.5"
-                          >
-                            <RefreshCw size={14} />
-                            <span>Fetch & Sync Sheets</span>
-                          </button>
+
+                          <div className="flex gap-3">
+                            <button
+                              type="button"
+                              onClick={handleLogout}
+                              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-xs transition-all border border-slate-200 dark:border-white/5"
+                            >
+                              Lock
+                            </button>
+                            <button
+                              type="submit"
+                              className="flex-1 px-4 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-1.5"
+                            >
+                              <RefreshCw size={14} />
+                              <span>Fetch & Sync Sheets</span>
+                            </button>
+                          </div>
                         </div>
                       </form>
                     ) : (

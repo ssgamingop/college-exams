@@ -1,11 +1,55 @@
 /**
  * API utility to query the Node.js/Express backend.
+ * Uses JWT tokens for admin authentication — password is never stored client-side.
  */
 
 // No hardcoded BASE_URL is needed!
 // In development, Vite dev server proxies /api requests to localhost:5001.
 // In production, the Express backend serves the static assets directly, meaning they share the same origin.
 const API_BASE = '';
+
+// --- JWT Token Management ---
+
+const TOKEN_KEY = 'adminToken';
+
+/**
+ * Stores the JWT session token in sessionStorage.
+ */
+export function setAuthToken(token) {
+  sessionStorage.setItem(TOKEN_KEY, token);
+}
+
+/**
+ * Retrieves the stored JWT session token.
+ */
+export function getAuthToken() {
+  return sessionStorage.getItem(TOKEN_KEY);
+}
+
+/**
+ * Clears the stored JWT session token (logout).
+ */
+export function clearAuthToken() {
+  sessionStorage.removeItem(TOKEN_KEY);
+}
+
+/**
+ * Checks if the user has a stored (potentially valid) token.
+ */
+export function hasAuthToken() {
+  return !!getAuthToken();
+}
+
+/**
+ * Returns the Authorization header object for authenticated requests.
+ */
+function getAuthHeaders() {
+  const token = getAuthToken();
+  if (!token) return {};
+  return { 'Authorization': `Bearer ${token}` };
+}
+
+// --- Public API Calls (No Auth Required) ---
 
 /**
  * Searches students by name or roll number.
@@ -68,33 +112,6 @@ export async function getStudentByRoll(rollNo) {
 }
 
 /**
- * Uploads the 3 CSV file contents to process and sync the database.
- * @param {string} mappingCsv - Mapping CSV text
- * @param {string} theoryCsv - Theory Schedule CSV text
- * @param {string} practicalCsv - Practical Schedule CSV text
- * @returns {Promise<Object>} - The API response
- */
-export async function uploadAndSyncCsv(batch, mappingCsv, theoryCsv, practicalCsv, password) {
-  try {
-    const response = await fetch(`${API_BASE}/api/students/upload-csv`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ batch, mappingCsv, theoryCsv, practicalCsv, password })
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to upload and sync CSV files');
-    }
-    return data;
-  } catch (error) {
-    console.error('Error in uploadAndSyncCsv API utility:', error);
-    throw error;
-  }
-}
-
-/**
  * Gets the total number of students in the database.
  * @returns {Promise<number>} - Count of students
  */
@@ -110,10 +127,12 @@ export async function getStudentCount() {
   }
 }
 
+// --- Admin API Calls (JWT Auth Required) ---
+
 /**
- * Verifies the admin authorization password.
+ * Verifies the admin authorization password and stores the returned JWT token.
  * @param {string} password - Admin authorization password
- * @returns {Promise<Object>} - Success result
+ * @returns {Promise<Object>} - Success result with token
  */
 export async function verifyPassword(password) {
   const response = await fetch(`${API_BASE}/api/students/verify-password`, {
@@ -125,15 +144,26 @@ export async function verifyPassword(password) {
   if (!response.ok) {
     throw new Error(data.error || 'Password verification failed');
   }
+  // Store the JWT token — never the password
+  if (data.token) {
+    setAuthToken(data.token);
+  }
   return data;
 }
 
 /**
  * Gets the current Google Sheets sync configuration from the server.
- * @returns {Promise<Object>} - Config object with mappingUrl, theoryUrl, practicalUrl, useAi, hasApiKey
+ * Requires JWT authentication.
+ * @returns {Promise<Object>} - Config object with batches, useAi, hasApiKey
  */
 export async function getSyncConfig() {
-  const response = await fetch(`${API_BASE}/api/students/sync-config`);
+  const response = await fetch(`${API_BASE}/api/students/sync-config`, {
+    headers: { ...getAuthHeaders() }
+  });
+  if (response.status === 401 || response.status === 403) {
+    clearAuthToken();
+    throw new Error('Session expired. Please log in again.');
+  }
   if (!response.ok) {
     throw new Error('Failed to load sync configuration');
   }
@@ -141,17 +171,81 @@ export async function getSyncConfig() {
 }
 
 /**
- * Syncs the database with student schedules from Google Sheets.
+ * Uploads the 3 CSV file contents to process and sync the database.
+ * Requires JWT authentication.
  */
-export async function syncGoogleSheets(batch, mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey, password) {
+export async function uploadAndSyncCsv(batch, mappingCsv, theoryCsv, practicalCsv) {
+  try {
+    const response = await fetch(`${API_BASE}/api/students/upload-csv`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ batch, mappingCsv, theoryCsv, practicalCsv })
+    });
+    if (response.status === 401 || response.status === 403) {
+      clearAuthToken();
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.details || 'Session expired. Please log in again.');
+    }
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to upload and sync CSV files');
+    }
+    return data;
+  } catch (error) {
+    console.error('Error in uploadAndSyncCsv API utility:', error);
+    throw error;
+  }
+}
+
+/**
+ * Syncs the database with student schedules from Google Sheets.
+ * Requires JWT authentication.
+ */
+export async function syncGoogleSheets(batch, mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey) {
   const response = await fetch(`${API_BASE}/api/students/sync-sheets`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ batch, mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey, password })
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify({ batch, mappingUrl, theoryUrl, practicalUrl, useAi, groqApiKey })
   });
+  if (response.status === 401 || response.status === 403) {
+    clearAuthToken();
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.details || 'Session expired. Please log in again.');
+  }
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.error || 'Failed to sync Google Sheets');
+  }
+  return data;
+}
+
+/**
+ * Syncs ALL batches from saved Google Sheets links in one operation.
+ * Requires JWT authentication.
+ * @returns {Promise<Object>} - Results with total count, per-batch results, and any errors
+ */
+export async function syncAllSheets() {
+  const response = await fetch(`${API_BASE}/api/students/sync-all-sheets`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    }
+  });
+  if (response.status === 401 || response.status === 403) {
+    clearAuthToken();
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.details || 'Session expired. Please log in again.');
+  }
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to sync all sheets');
   }
   return data;
 }
